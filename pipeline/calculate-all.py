@@ -52,7 +52,6 @@ def load_lci(lci_path):
     lci_marine_eutrophication.rename(columns={lci_marine_eutrophication.columns[0]: "Country"}, inplace=True)
 
     # for land use 
-    # TODO: should we use average or marginal factors?
     # TODO: should transformation be taken into account, now only occupation is used?
     lci_land = pd.read_excel(f"{lci_path}/11-Land stress/CFs_land_Use_average.xlsx",
                     sheet_name="occupation average country",
