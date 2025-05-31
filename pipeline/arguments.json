@@ -1,5 +1,6 @@
 {
     "exiobase_version": "3.8.2",
     "lc_impact_path": "/Users/tterimaa/code/pdf-calculation/sources/LC-Impact",
-    "exio_19_path": "/Users/tterimaa/code/pdf-calculation/sources/IOT_2019_pxp.zip"
+    "exio_19_path": "/Users/tterimaa/code/pdf-calculation/sources/IOT_2019_pxp.zip",
+    "exio_11_path": "/Users/tterimaa/code/pdf-calculation/sources/IOT_2011_pxp.zip"
 }

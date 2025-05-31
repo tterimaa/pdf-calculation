@@ -75,7 +75,243 @@ def load_lci(lci_path):
     return lci_climate, lci_ozone, lci_acidification, lci_freshwater_eutrophication, lci_marine_eutrophication, lci_land, lci_water
 
 
+def calculate_cba(exio3_11, diag_stressor, L):
+    print(f"Calculating CBA for {diag_stressor.name}")
+    diag_stressor.S = pymrio.calc_S(diag_stressor.F, exio3_11.x)
+    Y_agg = exio3_11.Y.groupby(level="region", axis=1, sort=False).sum()
+    diag_stressor.D_cba, _, _, _ = pymrio.calc_accounts(diag_stressor.S, L, Y_agg)
+    return diag_stressor.D_cba
+
+
+def get_country_code(name):
+    extra_mappings = {
+        "Turkey": "TR",
+        "Russia": "RU",
+        "Bahamas, The": "BS",
+        "Byelarus": "BY",
+        "Brunei": "BN",
+        "Cape Verde": "CV",
+        "China, Hong Kong Special Administrative Region": "HK",
+        "Democratic Republic of the Congo": "CD",
+        "Falkland Islands": "FK",
+        "Gambia, The": "GM",
+        "Ivory Coast": "CI",
+        "Macedonia": "MK",
+        "Myanmar (Burma)": "MM",
+        "Netherlands Antilles": "AN",
+        "Reunion": "RE",
+        "Sao Tomo and Principe": "ST",
+        "St. Vincent and the Grenadines": "VC",
+        "Svalbard": "SJ",
+        "Swaziland": "SZ",
+        "US Virgin Islands": "VI",
+        "Western Samoa": "WS",
+    }
+    try:
+        return pyc.countries.lookup(name).alpha_2
+    except LookupError:
+        try:
+            return extra_mappings[name]
+        except LookupError:
+            print("Country code not found for ", name)
+            return None  # Return None if country not found
+
+
+def dr_s(D_cba):
+    print("Calculating dr_s")
+    columns = {}
+    for series_name, series in D_cba.items():
+        series_sum = series.sum()
+        columns[series_name] = series / series_sum
+    dr_s = pd.DataFrame(columns)
+    return dr_s
+
+def dr_u(dr_s):
+    print("Calculating dr_u")
+    row_eu_countries = {
+        'AL': 'Albania',
+        'AZ': 'Azerbaijan',
+        'BA': 'Bosnia and Herzegovina',
+        'BY': 'Belarus',
+        'IS': 'Iceland',
+        'GL': 'Greenland',
+        'GE': 'Georgia',
+        'MK': 'Macedonia',
+        'MD': 'Moldova',
+        'RS': 'Serbia',
+        'UA': 'Ukraine',
+        # overseas territories of EU countries 
+        'GP': 'Guadeloupe',
+        'GF': 'French Guiana',
+        'RE': 'Reunion',
+        'VC': 'Saint Vincent and the Grenadines',
+    }
+
+    row_asia_pacific_countries = {
+        'BD': 'Bangladesh', 'BN': 'Brunei', 'BT': 'Bhutan',
+        'KH': 'Cambodia', 'FJ': 'Fiji',
+        'KZ': 'Kazakhstan', 'KG': 'Kyrgyzstan', 'LA': 'Laos', 'MY': 'Malaysia', 'MV': 'Maldives',
+        'MN': 'Mongolia', 'MM': 'Myanmar (Burma)', 'NP': 'Nepal', 'NZ': 'New Zealand',
+        'KP': 'North Korea', 'PK': 'Pakistan', 'PG': 'Papua New Guinea', 'PH': 'Philippines',
+        'WS': 'Samoa', 'SB': 'Solomon Islands', 'LK': 'Sri Lanka', 'SG': 'Singapore',
+        'TJ': 'Tajikistan', 'TH': 'Thailand', 'TO': 'Tonga', 'TM': 'Turkmenistan',
+        'UZ': 'Uzbekistan', 'VU': 'Vanuatu', 'VN': 'Vietnam'
+    }
+
+    row_african_countries = {
+        'DZ': 'Algeria', 'AO': 'Angola', 'BJ': 'Benin', 'BW': 'Botswana', 'BF': 'Burkina Faso', 'BI': 'Burundi',
+        'CM': 'Cameroon', 'CV': 'Cape Verde', 'CF': 'Central African Republic', 'TD': 'Chad', 'KM': 'Comoros',
+        'CG': 'Congo', 'CD': 'Congo DRC', 'DJ': 'Djibouti', 'EG': 'Egypt', 'EH': 'Western Sahara', 'GQ': 'Equatorial Guinea', 'ER': 'Eritrea',
+        'ET': 'Ethiopia', 'GA': 'Gabon', 'GM': 'Gambia, The', 'GH': 'Ghana', 'GN': 'Guinea', 'GW': 'Guinea-Bissau',
+        'CI': 'Ivory Coast', 'KE': 'Kenya', 'LS': 'Lesotho', 'LR': 'Liberia', 'LY': 'Libya', 'MG': 'Madagascar',
+        'MW': 'Malawi', 'ML': 'Mali', 'MR': 'Mauritania', 'MU': 'Mauritius', 'MA': 'Morocco', 'MZ': 'Mozambique', 'MQ': 'Martinique',
+        'NA': 'Namibia', 'NE': 'Niger', 'NG': 'Nigeria', 'RW': 'Rwanda', 'ST': 'São Tomé and Príncipe', 'SN': 'Senegal',
+        'SL': 'Sierra Leone', 'SO': 'Somalia', 'SZ': 'Eswatini',
+        'SD': 'Sudan', 'TZ': 'Tanzania', 'TG': 'Togo', 'TN': 'Tunisia', 'UG': 'Uganda', 'ZM': 'Zambia', 'ZW': 'Zimbabwe'
+    }
+
+    row_american_countries = {
+        'AW': 'Aruba', 'AR': 'Argentina', 'BS': 'Bahamas, The', 'BZ': 'Belize', 'BO': 'Bolivia',
+        'BB': 'Barbados', 'CL': 'Chile', 'CO': 'Colombia', 'CR': 'Costa Rica', 'CU': 'Cuba', 'DO': 'Dominican Republic',
+        'EC': 'Ecuador', 'SV': 'El Salvador', 'GD': 'Grenada', 'GT': 'Guatemala', 'GY': 'Guyana', 'HT': 'Haiti', 'HN': 'Honduras', 'JM': 'Jamaica',
+        'NI': 'Nicaragua', 'PA': 'Panama', 'PY': 'Paraguay', 'PE': 'Peru', 'PR': 'Puerto Rico', 'LC': 'Saint Lucia',
+        'SR': 'Suriname', 'TT': 'Trinidad and Tobago', 'UY': 'Uruguay', 'VE': 'Venezuela'
+    }
+
+    row_middle_eastern_countries = {
+        'AF': 'Afghanistan', 'AM': 'Armenia', 'BH': 'Bahrain',
+        'IR': 'Iran', 'IQ': 'Iraq', 'IL': 'Israel', 'JO': 'Jordan', 'KW': 'Kuwait', 'LB': 'Lebanon', 'OM': 'Oman',
+        'QA': 'Qatar', 'SA': 'Saudi Arabia', 'SY': 'Syria', 'AE': 'United Arab Emirates',
+        'YE': 'Yemen'
+    }
+
+    row_regions = {
+        "WA": "Asia and pacific",
+        "WE": "Europe",
+        "WF": "Africa",
+        "WM": "Middle east",
+        "WL": "America"
+    }
+
+    # augment dr_s to create dr_u
+    # new regions are calculated by dividing their corresponding row region by the number of countries in the row region
+    # for example, row region Argentina is sub-matrix WA divided by the number of countries in row region WA
+    wl = dr_s.loc["WL"].copy()
+    wl = wl / len(row_american_countries)
+
+    we = dr_s.loc["WE"].copy()
+    we = we / len(row_eu_countries)
+
+    wa = dr_s.loc["WA"].copy()
+    wa = wa / len(row_asia_pacific_countries)
+
+    wf = dr_s.loc["WF"].copy()
+    wf = wf / len(row_african_countries)
+
+    wm = dr_s.loc["WM"].copy()
+    wm = wm / len(row_middle_eastern_countries)
+
+    dr_u = dr_s.copy()
+    dr_u = dr_u.drop(index=row_regions.keys(), level='region')
+
+    all_row_region_keys = list(row_eu_countries.keys()) + list(row_asia_pacific_countries.keys()) + list(row_african_countries.keys()) + list(row_american_countries.keys()) + list(row_middle_eastern_countries.keys())
+    # build a mapping of country codes to region dataframes
+    country_to_region = {}
+    for region in all_row_region_keys:
+        if region in row_eu_countries:
+            country_to_region[region] = we
+        elif region in row_asia_pacific_countries:
+            country_to_region[region] = wa
+        elif region in row_african_countries:
+            country_to_region[region] = wf
+        elif region in row_american_countries:
+            country_to_region[region] = wl
+        elif region in row_middle_eastern_countries:
+            country_to_region[region] = wm
+        else:
+            raise ValueError(f"Unknown region: {region}")
+
+    # add all new regions to dr_u
+    all_indices = []
+    all_data = []
+    for region in all_row_region_keys:
+        region_data = country_to_region[region].copy()
+        idx = pd.MultiIndex.from_product([[region],region_data.index], names=['region', 'sector'])
+        all_indices.append(idx)
+        all_data.append(region_data)
+
+    combined_idx = pd.MultiIndex.from_tuples(
+        [idx for subidx in all_indices for idx in subidx]
+    )
+
+    combined_data = pd.concat(all_data)
+    combined_data.index = combined_idx
+
+    dr_u = pd.concat([dr_u, combined_data])
+    return dr_u
+
+
+def dr_f(exio3_19, dr_u, stressor_name):
+    print(f"Calculating dr_f for {stressor_name}")
+    # use 2019 impact factors for calculating dr_f
+    # calculate dr_f - share of the driver of biodiversity loss in impact region i from the total amount of the driver that is driven by consumption in consumption region j, product sector k
+    dr_f = dr_u.copy()
+    total = exio3_19.satellite.M.loc[stressor_name]
+    scalars = total.to_numpy() # multipliers for each column
+
+    # multiply each column of dr_u by the respective column value from exio3_19 impact factors
+    dr_f = dr_f * scalars # same as dr_f * diag(scalars) but more efficient with numpy broadcasting
+    return dr_f
+
+
+def pdf(lci, dr_f, stressor_name):
+    print(f"Calculating PDF/€ {stressor_name}")
+    lci["Country_Code"] = lci["Country"].apply(get_country_code)
+    lci = lci.dropna(subset=["Country_Code"])
+    lci.set_index("Country_Code", inplace=True)
+    # Ensure lci index is unique before reindexing
+    lci = lci[~lci.index.duplicated(keep='first')]
+    # sort rows on lci in same order as dr_f.index.sortlevel
+    lci_reindexed = lci.reindex(dr_f.index.get_level_values(0).unique())
+
+    # build array from the relevent lci stressor
+    # every value should be repeated 200 times (number of sectors)
+    cf = lci_reindexed[stressor_name].to_numpy()
+    cf = np.repeat(cf, 200) # 1D array of length 200 * number of regions in lci
+    # expand cf_all_effects to match the shape of dr_f
+    cf = np.tile(cf, (dr_f.shape[1], 1)).T
+
+    pdf = dr_f * cf
+    pdf_total = pdf.sum()
+    return pdf_total
+
+
+def ozone_formation(lci_ozone, exio3_19, exio3_11):
+    print("Calculating PDF/€ ozone formation")
+    nmvoc_diag = exio3_11.satellite.diag_stressor(("NMVOC - combustion - air"))
+    nox_diag = exio3_11.satellite.diag_stressor(("NOx - combustion - air"))
+
+    D_cba_nmvoc = calculate_cba(exio3_11, nmvoc_diag, exio3_11.L)
+    D_cba_nox = calculate_cba(exio3_11, nox_diag, exio3_11.L)
+
+    dr_s_nmvoc = dr_s(D_cba_nmvoc)
+    dr_s_nox = dr_s(D_cba_nox)
+
+    dr_u_nmvoc = dr_u(dr_s_nmvoc)
+    dr_u_nox = dr_u(dr_s_nox)
+
+    dr_f_nmvoc = dr_f(exio3_19, dr_u_nmvoc, "NMVOC - combustion - air")
+    dr_f_nox = dr_f(exio3_19, dr_u_nox, "NOx - combustion - air")
+
+    ozone_nmvoc = pdf(lci_ozone, dr_f_nmvoc, "NMVOC")
+    ozone_nox = pdf(lci_ozone, dr_f_nox, "NOx")
+
+    return ozone_nmvoc, ozone_nox
+
+
 def climate_change(lci_climate, exio3_19):
+    print("Calculating PDF/€ ozone formation")
+
     # TODO: this grouping should be checked
     groups = exio3_19.satellite.get_index(as_dict=True, grouping_pattern={
         "CO2.*": "CO2 - Total",
@@ -119,18 +355,29 @@ def climate_change(lci_climate, exio3_19):
     return climate_aquatic, climate_terrestrial
 
 
-def calculate_all(lci_path, exio_19_path):
+def calculate_all(lci_path, exio_19_path, exio_11_path):
     lci_climate, lci_ozone, lci_acidification, lci_freshwater_eutrophication, lci_marine_eutrophication, lci_land, lci_water = load_lci(lci_path)
 
     # exiobase 2019 is used for impact factors
     exio3_19 = pymrio.parse_exiobase3(path=exio_19_path)
+    # exiobase 2011 is used for calculating share of stressor for each region-product pair
+    exio3_11 = pymrio.parse_exiobase3(path=exio_11_path)
+    print("Calculating A (exio3_11)")
+    exio3_11.A = pymrio.calc_A(exio3_11.Z, exio3_11.x)
+    print("Calculating L (exio3_11)")
+    exio3_11.L = pymrio.calc_L(exio3_11.A)
 
     # Calculate climate change impact
     climate_aquatic, climate_terrestrial = climate_change(lci_climate, exio3_19)
 
+    # Calculate ozone formation impact
+    ozone_nmvoc, ozone_nox = ozone_formation(lci_ozone, exio3_19, exio3_11)
+
     # Write the results
     pd.DataFrame(climate_aquatic).to_csv("pipeline/output/pdf-climate-aquatic.csv", index=True)
     pd.DataFrame(climate_terrestrial).to_csv("pipeline/output/pdf-climate-terrestrial.csv", index=True)
+    pd.DataFrame(ozone_nmvoc).to_csv("pipeline/output/pdf-ozone-nmvoc.csv", index=True)
+    pd.DataFrame(ozone_nox).to_csv("pipeline/output/pdf-ozone-nox.csv", index=True)
 
 
 def main():
@@ -150,7 +397,7 @@ def main():
         print("Successfully parsed JSON file:")
         print(json.dumps(data, indent=4))  # Pretty-print JSON
 
-        calculate_all(data['lc_impact_path'], data['exio_19_path'])
+        calculate_all(data['lc_impact_path'], data['exio_19_path'], data['exio_11_path'])
     except FileNotFoundError:
         print(f"Error: File '{json_file}' not found.")
     except json.JSONDecodeError as e:
