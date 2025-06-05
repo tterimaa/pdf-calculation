@@ -1,6 +1,7 @@
 import pandas as pd
 import pymrio
 import pycountry as pyc
+import json
 
 """
 This file is for testing harmonization of LCI and exiobase data regarding countries and regions.
@@ -215,7 +216,7 @@ def augment_freshwater(lci_freshwater):
     lci_freshwater = pd.concat([lci_freshwater, cyprus_row], ignore_index=True)
     return lci_freshwater
 
-def augmeent_marine(lci_marine):
+def augment_marine(lci_marine):
     n_w_eu = 3.86913531769129E-15
     luxembourg_row = pd.DataFrame({
         "Country": ["Luxembourg"],
@@ -272,70 +273,15 @@ def region_to_country(row_countries):
     """
     Returns a map of regions to countries.
     """
-    row_eu_countries = {
-        'AL': 'Albania',
-        'AD': 'Andorra',
-        'AZ': 'Azerbaijan',
-        'BA': 'Bosnia and Herzegovina',
-        'BY': 'Belarus',
-        'FO': 'Faroe Islands',
-        'GI': 'Gibraltar',
-        'GG': 'Guernsey',
-        'IS': 'Iceland',
-        'IM': 'Isle of Man',
-        'JE': 'Jersey',
-        'GL': 'Greenland',
-        'LI': 'Liechtenstein',
-        'SM': 'San Marino',
-        'SJ': 'Svalbard and Jan Mayen',
-        'MC': 'Monaco',
-        'GE': 'Georgia',
-        'MK': 'Macedonia',
-        'MD': 'Moldova',
-        'ME': 'Montenegro',
-        'RS': 'Serbia',
-        'UA': 'Ukraine',
-    }
-
-    row_asia_pacific_countries = {
-        'AS': 'American Samoa', 'BD': 'Bangladesh', 'BN': 'Brunei', 'BT': 'Bhutan', 'CK': 'Cook Islands', 'CX': 'Christmas Island',
-        'CC': 'Cocos Islands', 'KH': 'Cambodia', 'FJ': 'Fiji', 'FM': 'Micronesia', 'GU': 'Guam', 'HK': 'Hong Kong', 'IO': 'British Indian Ocean Territory (the)',
-        'KZ': 'Kazakhstan', 'KI': 'Kiribati', 'KG': 'Kyrgyzstan', 'LA': 'Laos', 'MO': 'Macao', 'MY': 'Malaysia', 'MH': 'Marshall Islands', 'MP': 'Northern Mariana Islands', 'MV': 'Maldives',
-        'MN': 'Mongolia', 'MM': 'Myanmar (Burma)', 'NF': 'Norfolk Island', 'NP': 'Nepal', 'NR': 'Nauru', 'NC': 'New Caledonia', 'NZ': 'New Zealand', 'NU': 'Niue',
-        'KP': 'North Korea', 'PW': 'Palau', 'PK': 'Pakistan', 'PG': 'Papua New Guinea', 'PH': 'Philippines', 'PN': 'Pitcairn',
-        'WS': 'Samoa', 'SB': 'Solomon Islands', 'LK': 'Sri Lanka', 'SG': 'Singapore',
-        'TJ': 'Tajikistan', 'TK': 'Tokelau', 'TH': 'Thailand', 'TO': 'Tonga', 'TM': 'Turkmenistan', 'TL': 'Timor-Leste', 'TV': 'Tuvalu', 'WF': 'Wallis and Futuna', 'TF': 'French Southern Territories (the)',
-        'UM': 'United States Minor Outlying Islands', 'UZ': 'Uzbekistan', 'VU': 'Vanuatu', 'VN': 'Vietnam', 'PF': 'French Polynesia',
-    }
-
-    row_african_countries = {
-        'DZ': 'Algeria', 'AO': 'Angola', 'BJ': 'Benin', 'BW': 'Botswana', 'BF': 'Burkina Faso', 'BI': 'Burundi',
-        'CM': 'Cameroon', 'CV': 'Cape Verde', 'CF': 'Central African Republic', 'TD': 'Chad', 'KM': 'Comoros',
-        'CG': 'Congo', 'CD': 'Congo DRC', 'DJ': 'Djibouti', 'EH': 'Western Sahara', 'EG': 'Egypt', 'GQ': 'Equatorial Guinea', 'ER': 'Eritrea',
-        'ET': 'Ethiopia', 'GA': 'Gabon', 'GM': 'Gambia, The', 'GH': 'Ghana', 'GN': 'Guinea', 'GW': 'Guinea-Bissau', 'HM': 'Heard Island and McDonald Islands',
-        'CI': 'Ivory Coast', 'KE': 'Kenya', 'KY': 'Cayman Islands', 'LS': 'Lesotho', 'LR': 'Liberia', 'LY': 'Libya', 'MG': 'Madagascar',
-        'MW': 'Malawi', 'ML': 'Mali', 'MR': 'Mauritania', 'MU': 'Mauritius', 'MA': 'Morocco', 'MZ': 'Mozambique', 'MQ': 'Martinique',
-        'NA': 'Namibia', 'NE': 'Niger', 'NG': 'Nigeria', 'RW': 'Rwanda', 'RE': 'Reunion', 'ST': 'São Tomé and Príncipe', 'SN': 'Senegal', 'SH': 'Saint Helena, Ascension and Tristan da Cunha',
-        'SL': 'Sierra Leone', 'SO': 'Somalia', 'SZ': 'Eswatini', 'SC': 'Seychelles', 'SS': 'South Sudan',
-        'SD': 'Sudan', 'TZ': 'Tanzania', 'TG': 'Togo', 'TN': 'Tunisia', 'UG': 'Uganda', 'YT': 'Mayotte', 'ZM': 'Zambia', 'ZW': 'Zimbabwe'
-    }
-
-    row_american_countries = {
-        'AQ': 'Antarctica', 'AI': 'Anguilla', 'AG': 'Antigua and Barbuda', 'AN': 'Netherlands Antilles', 'AW': 'Aruba', 'AR': 'Argentina', 'BS': 'Bahamas, The', 'BZ': 'Belize', 'BO': 'Bolivia', 'BL': 'Saint Barthelemy',
-        'BB': 'Barbados', 'BQ': 'Bonaire, Sint Eustatius and Saba', 'BM': 'Bermuda', 'BV': 'Bouvet Island', 'CL': 'Chile', 'CO': 'Colombia', 'CR': 'Costa Rica', 'CU': 'Cuba', 'CW': 'Curacao', 'DO': 'Dominican Republic', 'DM': 'Dominica',
-        'EC': 'Ecuador', 'GP': 'Guadeloupe', 'GF': 'French Guiana', 'GS': 'South Georgia and the South Sandwich Islands', 'SV': 'El Salvador', 'GD': 'Grenada', 'GT': 'Guatemala', 'GY': 'Guyana', 'HT': 'Haiti', 'HN': 'Honduras', 'JM': 'Jamaica', 
-        'FK': 'Falkland Islands (Islas Malvinas)',
-        'MS': 'Montserrat', 'MF': 'Saint Martin (French part)', 'NI': 'Nicaragua', 'PA': 'Panama', 'PY': 'Paraguay', 'PE': 'Peru', 'PM': 'Saint Pierre and Miquelon', 'PR': 'Puerto Rico', 'KN': 'Saint Kitts and Nevis', 'LC': 'Saint Lucia',
-        'SR': 'Suriname', 'SX': 'Sint Maarten (Dutch part)', 'TC': 'Turks and Caicos Islands', 'TT': 'Trinidad and Tobago', 'UY': 'Uruguay', 'VE': 'Venezuela', 'VI': 'United States Virgin Islands', 'VG': 'Virgin Islands (British)', 
-        'VC': 'Saint Vincent and the Grenadines',
-    }
-
-    row_middle_eastern_countries = {
-        'AF': 'Afghanistan', 'AM': 'Armenia', 'BH': 'Bahrain',
-        'IR': 'Iran', 'IQ': 'Iraq', 'IL': 'Israel', 'JO': 'Jordan', 'KW': 'Kuwait', 'LB': 'Lebanon', 'OM': 'Oman',
-        'PS': 'Palestine', 'QA': 'Qatar', 'SA': 'Saudi Arabia', 'SY': 'Syria', 'AE': 'United Arab Emirates',
-        'YE': 'Yemen'
-    }
+    # Load the country mappings from arguments.json
+    with open("pipeline/arguments.json", "r") as f:
+        args = json.load(f)
+    
+    row_eu_countries = args["row_region_mappings"]["row_eu"]
+    row_asia_pacific_countries = args["row_region_mappings"]["row_asia_pacific"]
+    row_african_countries = args["row_region_mappings"]["row_africa"]
+    row_american_countries = args["row_region_mappings"]["row_america"]
+    row_middle_eastern_countries = args["row_region_mappings"]["row_middle_east"]
 
     region_to_country_map = {
         "WE": [],
@@ -362,9 +308,13 @@ def region_to_country(row_countries):
 
 if __name__ == "__main__":
     # STEP 1: LOAD DATA
-    lci_path = "/Users/tterimaa/code/pdf-calculation/sources/LC-Impact"  # Replace with the actual path to your LCI data
+    # Load arguments from arguments.json
+    with open("pipeline/arguments.json", "r") as f:
+        args = json.load(f)
+    
+    lci_path = args["lc_impact_path"]  # Get path from arguments.json
     lci_climate, lci_ozone, lci_acidification, lci_freshwater_eutrophication, lci_marine_eutrophication, lci_land, lci_water = load_lci(lci_path)
-    exio19_path = "/Users/tterimaa/code/pdf-calculation/sources/IOT_2019_pxp.zip"  
+    exio19_path = args["exio_19_path"]  # Get path from arguments.json
     # use caching to avoid loading regions every time
     try:
         with open("exio3_19_regions.txt", "r") as f:
@@ -436,7 +386,7 @@ if __name__ == "__main__":
 
     if (len(get_missing_from_lci(exio_regions_without_row, lci_marine_eutrophication)) > 0):
         print("Missing from LCI marine eutrophication:", get_missing_from_lci(exio_regions_without_row, lci_marine_eutrophication))
-        lci_marine_eutrophication = augmeent_marine(lci_marine_eutrophication)
+        lci_marine_eutrophication = augment_marine(lci_marine_eutrophication)
         assert len(get_missing_from_lci(exio_regions_without_row, lci_marine_eutrophication)) == 0, "There are still missing regions in marine eutrophication after augmentation"
 
     if (len(get_missing_from_lci(exio_regions_without_row, lci_land)) > 0):
