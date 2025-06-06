@@ -71,6 +71,23 @@ def load_lci(lci_path):
                         dtype={1: float, 2: float},
                         skiprows=2)
     lci_water = lci_water[["Country", "CF all effects  [PDF·yr/m3]"]]
+    
+    # Add country codes to all LCI datasets and remove missing ones
+    lci_ozone["Country_Code"] = lci_ozone["Country"].apply(get_country_code)
+    lci_acidification["Country_Code"] = lci_acidification["Country"].apply(get_country_code)
+    lci_freshwater_eutrophication["Country_Code"] = lci_freshwater_eutrophication["Country"].apply(get_country_code)
+    lci_marine_eutrophication["Country_Code"] = lci_marine_eutrophication["Country"].apply(get_country_code)
+    lci_land["Country_Code"] = lci_land["Country"].apply(get_country_code)
+    lci_water["Country_Code"] = lci_water["Country"].apply(get_country_code)
+    
+    # Drop countries without alpha-2 code
+    lci_ozone.dropna(subset=["Country_Code"], inplace=True)
+    lci_acidification.dropna(subset=["Country_Code"], inplace=True)
+    lci_freshwater_eutrophication.dropna(subset=["Country_Code"], inplace=True)
+    lci_marine_eutrophication.dropna(subset=["Country_Code"], inplace=True)
+    lci_land.dropna(subset=["Country_Code"], inplace=True)
+    lci_water.dropna(subset=["Country_Code"], inplace=True)
+    
     return lci_climate, lci_ozone, lci_acidification, lci_freshwater_eutrophication, lci_marine_eutrophication, lci_land, lci_water
 
 
@@ -83,28 +100,61 @@ def calculate_cba(exio3_11, diag_stressor, L):
 
 
 def get_country_code(name):
+    # custom mappings for countries that pycountry does not recognize
+    # these should cover all the countries in the LCI data if country has alpha-2 code
+    # these mappings were extracted manually
     extra_mappings = {
         "Turkey": "TR",
         "Russia": "RU",
         "Bahamas, The": "BS",
+        "Bonaire": "BQ",
         "Byelarus": "BY",
         "Brunei": "BN",
         "Cape Verde": "CV",
+        "Cocos Islands": "CC",
+        "Congo DRC": "CD",
         "China, Hong Kong Special Administrative Region": "HK",
+        "Curacao": "CW",
         "Democratic Republic of the Congo": "CD",
         "Falkland Islands": "FK",
+        "Falkland Islands (Islas Malvinas)": "FK",
         "Gambia, The": "GM",
+        "Gaza Strip": "PS",
+        "Heard Island & McDonald Islands": "HM",
         "Ivory Coast": "CI",
         "Macedonia": "MK",
+        "The Former Yugoslav Republic of Macedonia": "MK",
+        "Macau": "MO",
+        "Man, Isle of": "IM",
+        "Micronesia": "FM",
         "Myanmar (Burma)": "MM",
         "Netherlands Antilles": "AN",
+        "Palestinian Territory": "PS",
+        "Pacific Islands (Palau)": "PW",
+        "Pitcairn Islands": "PN",
         "Reunion": "RE",
+        "Saba": "BQ",
+        "Saint Eustatius": "BQ",
+        "Saint Helena": "SH",
+        "Saint Martin": "MF",
+        "Sint Maarten": "SX",
+        "South Georgia and the South Sandwich Is": "GS",
+        "South Georgia": "GS",
+        "St. Helena": "SH",
+        "Saint Barthelemy": "BL",
+        "Saint Kitts and Nevis": "KN",
+        "St. Kitts and Nevis": "KN",
+        "St. Lucia": "LC",
+        "St. Pierre and Miquelon": "PM",
         "Sao Tomo and Principe": "ST",
         "St. Vincent and the Grenadines": "VC",
         "Svalbard": "SJ",
+        "Jan Mayen": "SJ",
         "Swaziland": "SZ",
         "US Virgin Islands": "VI",
+        "Virgin Islands": "VG",
         "Western Samoa": "WS",
+        "West Bank": "PS",
     }
     try:
         return pyc.countries.lookup(name).alpha_2
@@ -112,8 +162,8 @@ def get_country_code(name):
         try:
             return extra_mappings[name]
         except LookupError:
-            print("Country code not found for ", name)
-            return None  # Return None if country not found
+            print("Alpha-2 country code does not exist for ", name)
+            return None
 
 
 def dr_s(D_cba):
@@ -265,13 +315,14 @@ def dr_f(exio3_19, dr_u, stressor_name):
 
 def pdf(lci, dr_f, stressor_name):
     print(f"Calculating PDF/€ {stressor_name}")
-    lci["Country_Code"] = lci["Country"].apply(get_country_code)
-    lci = lci.dropna(subset=["Country_Code"])
-    lci.set_index("Country_Code", inplace=True)
+    # Country codes should already be added in load_lci function
+    # Make a copy to avoid modifying the original dataframe
+    lci_copy = lci.copy()
+    lci_copy.set_index("Country_Code", inplace=True)
     # Ensure lci index is unique before reindexing
-    lci = lci[~lci.index.duplicated(keep='first')]
+    lci_copy = lci_copy[~lci_copy.index.duplicated(keep='first')]
     # sort rows on lci in same order as dr_f.index.sortlevel
-    lci_reindexed = lci.reindex(dr_f.index.get_level_values(0).unique())
+    lci_reindexed = lci_copy.reindex(dr_f.index.get_level_values(0).unique())
 
     # build array from the relevent lci stressor
     # every value should be repeated 200 times (number of sectors)
