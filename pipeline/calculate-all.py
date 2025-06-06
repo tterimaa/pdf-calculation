@@ -344,6 +344,93 @@ def ozone_formation(lci_ozone, exio3_19, exio3_11, row_region_mappings):
     return ozone_nmvoc, ozone_nox
 
 
+def get_missing_from_lci(exio_regions, lci):
+    """
+    Get the regions that are in exiobase but not in lci data.
+    """
+    missing = []
+    for region in exio_regions:
+        if region not in lci["Country_Code"].tolist():
+            missing.append(region)
+    return missing
+
+
+def augment_acid(lci_acidification):
+    # taiwan and malta are missing from lc-impact
+    cf_nox_asia = 2.68501157634878E-14
+    cf_nh3_asia = 5.72697601775371E-15
+    cf_sox_asia = 2.13657207308791E-14
+
+    cf_nox_europe = 3.88566620512411E-14
+    cf_nh3_europe = 1.209421972687E-14
+    cf_sox_europe = 2.40053603985098E-14
+
+    row_taiwan = pd.DataFrame({
+        "Country": ["Taiwan"],
+        "CF Nox": [cf_nox_asia],
+        "CF NH3": [cf_nh3_asia],
+        "CF Sox": [cf_sox_asia],
+        "Country_Code": ["TW"],
+    })
+    row_malta = pd.DataFrame({
+        "Country": ["Malta"],
+        "CF Nox": [cf_nox_europe],
+        "CF NH3": [cf_nh3_europe],
+        "CF Sox": [cf_sox_europe],
+        "Country_Code": ["MT"],
+    })
+    lci_acidification = pd.concat([lci_acidification, row_malta], ignore_index=True)
+    lci_acidification = pd.concat([lci_acidification, row_taiwan], ignore_index=True)
+    return lci_acidification
+
+
+def acidification(lci_acidification, exio3_19, exio3_11, row_region_mappings):
+    print("Calculating PDF/€ acidification")
+    
+    # Get EXIOBASE regions
+    exio_regions = exio3_19.get_regions()
+    
+    # Define row regions (rest of world regions in EXIOBASE)
+    row_regions = {"WA": "Asia and pacific", "WE": "Europe", "WF": "Africa", "WM": "Middle east", "WL": "America"}
+    exio_regions_without_row = [region for region in exio_regions if region not in row_regions.keys()]
+    
+    # Check if acidification data needs augmentation
+    if len(get_missing_from_lci(exio_regions_without_row, lci_acidification)) > 0:
+        print("Missing from LCI acidification:", get_missing_from_lci(exio_regions_without_row, lci_acidification))
+        lci_acidification = augment_acid(lci_acidification)
+        assert len(get_missing_from_lci(exio_regions_without_row, lci_acidification)) == 0, "There are still missing regions in acidification after augmentation"
+    
+    # Get row regions for acidification
+    row_acidification = get_row_regions(lci_acidification["Country_Code"].tolist(), exio_regions)
+    print("Row regions for acidification:", row_acidification)
+    
+    nox_diag = exio3_11.satellite.diag_stressor(("NOx - combustion - air"))
+    nh3_diag = exio3_11.satellite.diag_stressor(("NH3 - agriculture - air"))
+    sox_diag = exio3_11.satellite.diag_stressor(("SOx - combustion - air"))
+
+    D_cba_nox = calculate_cba(exio3_11, nox_diag, exio3_11.L)
+    D_cba_nh3 = calculate_cba(exio3_11, nh3_diag, exio3_11.L)
+    D_cba_sox = calculate_cba(exio3_11, sox_diag, exio3_11.L)
+
+    dr_s_nox = dr_s(D_cba_nox)
+    dr_s_nh3 = dr_s(D_cba_nh3)
+    dr_s_sox = dr_s(D_cba_sox)
+
+    dr_u_nox = dr_u(dr_s_nox, row_region_mappings, row_acidification)
+    dr_u_nh3 = dr_u(dr_s_nh3, row_region_mappings, row_acidification)
+    dr_u_sox = dr_u(dr_s_sox, row_region_mappings, row_acidification)
+
+    dr_f_nox = dr_f(exio3_19, dr_u_nox, "NOx - combustion - air")
+    dr_f_nh3 = dr_f(exio3_19, dr_u_nh3, "NH3 - agriculture - air")
+    dr_f_sox = dr_f(exio3_19, dr_u_sox, "SOx - combustion - air")
+
+    acidification_nox = pdf(lci_acidification, dr_f_nox, "CF Nox")
+    acidification_nh3 = pdf(lci_acidification, dr_f_nh3, "CF NH3")
+    acidification_sox = pdf(lci_acidification, dr_f_sox, "CF Sox")
+
+    return acidification_nox, acidification_nh3, acidification_sox
+
+
 def climate_change(lci_climate, exio3_19):
     print("Calculating PDF/€ ozone formation")
 
@@ -407,12 +494,18 @@ def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings):
 
     # Calculate ozone formation impact
     ozone_nmvoc, ozone_nox = ozone_formation(lci_ozone, exio3_19, exio3_11, row_region_mappings)
+    
+    # Calculate acidification impact
+    acidification_nox, acidification_nh3, acidification_sox = acidification(lci_acidification, exio3_19, exio3_11, row_region_mappings)
 
     # Write the results
     pd.DataFrame(climate_aquatic).to_csv("pipeline/output/pdf-climate-aquatic.csv", index=True)
     pd.DataFrame(climate_terrestrial).to_csv("pipeline/output/pdf-climate-terrestrial.csv", index=True)
     pd.DataFrame(ozone_nmvoc).to_csv("pipeline/output/pdf-ozone-nmvoc.csv", index=True)
     pd.DataFrame(ozone_nox).to_csv("pipeline/output/pdf-ozone-nox.csv", index=True)
+    pd.DataFrame(acidification_nox).to_csv("pipeline/output/pdf-acidification-nox.csv", index=True)
+    pd.DataFrame(acidification_nh3).to_csv("pipeline/output/pdf-acidification-nh3.csv", index=True)
+    pd.DataFrame(acidification_sox).to_csv("pipeline/output/pdf-acidification-sox.csv", index=True)
 
 
 def main():
