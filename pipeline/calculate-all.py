@@ -477,6 +477,73 @@ def climate_change(lci_climate, exio3_19):
     return climate_aquatic, climate_terrestrial
 
 
+def augment_freshwater(lci_freshwater):
+    # malta is missing from lc-impact, add malta as new row with country code MT and EU averages
+    p_w_eu = 2.19740701963604E-13
+    p_s_eu = 2.27816881528299E-14
+    p_avg_eu = (p_w_eu + p_s_eu) / 2
+    malta_row = pd.DataFrame({
+        "Country": ["Malta"],
+        "CF for P emissions to water [PDFyr/kg]": [p_w_eu],
+        "CF for P emissions to soil [PDFyr/kg]": [p_s_eu],
+        "Average": [p_avg_eu],
+        "Country_Code": ["MT"],
+    })
+    lci_freshwater = pd.concat([lci_freshwater, malta_row], ignore_index=True)
+    # cyprus is missing from lc-impact, add cyprus as new row with country code CY and EU averages
+    cyprus_row = pd.DataFrame({
+        "Country": ["Cyprus"],
+        "CF for P emissions to water [PDFyr/kg]": [p_w_eu],
+        "CF for P emissions to soil [PDFyr/kg]": [p_s_eu],
+        "Average": [p_avg_eu],
+        "Country_Code": ["CY"],
+    })
+    lci_freshwater = pd.concat([lci_freshwater, cyprus_row], ignore_index=True)
+    return lci_freshwater
+
+
+def freshwater_eutrophication(lci_freshwater, exio3_19, exio3_11, row_region_mappings):
+    print("Calculating PDF/€ freshwater eutrophication")
+    
+    # Get EXIOBASE regions
+    exio_regions = exio3_19.get_regions()
+    
+    # Define row regions (rest of world regions in EXIOBASE)
+    row_regions = {"WA": "Asia and pacific", "WE": "Europe", "WF": "Africa", "WM": "Middle east", "WL": "America"}
+    exio_regions_without_row = [region for region in exio_regions if region not in row_regions.keys()]
+    
+    # Check if freshwater data needs augmentation
+    if len(get_missing_from_lci(exio_regions_without_row, lci_freshwater)) > 0:
+        print("Missing from LCI freshwater eutrophication:", get_missing_from_lci(exio_regions_without_row, lci_freshwater))
+        lci_freshwater = augment_freshwater(lci_freshwater)
+        assert len(get_missing_from_lci(exio_regions_without_row, lci_freshwater)) == 0, "There are still missing regions in freshwater eutrophication after augmentation"
+    
+    # Get row regions for freshwater eutrophication
+    row_freshwater = get_row_regions(lci_freshwater["Country_Code"].tolist(), exio_regions)
+    print("Row regions for freshwater eutrophication:", row_freshwater)
+    
+    # Calculate for both phosphorus water and soil emissions
+    p_water_diag = exio3_11.satellite.diag_stressor(("P - agriculture - water"))
+    p_soil_diag = exio3_11.satellite.diag_stressor(("P - agriculture - soil"))
+
+    D_cba_p_water = calculate_cba(exio3_11, p_water_diag, exio3_11.L)
+    D_cba_p_soil = calculate_cba(exio3_11, p_soil_diag, exio3_11.L)
+    
+    dr_s_p_water = dr_s(D_cba_p_water)
+    dr_s_p_soil = dr_s(D_cba_p_soil)
+    
+    dr_u_p_water = dr_u(dr_s_p_water, row_region_mappings, row_freshwater)
+    dr_u_p_soil = dr_u(dr_s_p_soil, row_region_mappings, row_freshwater)
+    
+    dr_f_p_water = dr_f(exio3_19, dr_u_p_water, "P - agriculture - water")
+    dr_f_p_soil = dr_f(exio3_19, dr_u_p_soil, "P - agriculture - soil")
+    
+    freshwater_p_water = pdf(lci_freshwater, dr_f_p_water, "CF for P emissions to water [PDFyr/kg]")
+    freshwater_p_soil = pdf(lci_freshwater, dr_f_p_soil, "CF for P emissions to soil [PDFyr/kg]")
+
+    return freshwater_p_water, freshwater_p_soil
+
+
 def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings):
     lci_climate, lci_ozone, lci_acidification, lci_freshwater_eutrophication, lci_marine_eutrophication, lci_land, lci_water = load_lci(lci_path)
 
@@ -497,6 +564,9 @@ def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings):
     
     # Calculate acidification impact
     acidification_nox, acidification_nh3, acidification_sox = acidification(lci_acidification, exio3_19, exio3_11, row_region_mappings)
+    
+    # Calculate freshwater eutrophication impact
+    freshwater_p_water, freshwater_p_soil = freshwater_eutrophication(lci_freshwater_eutrophication, exio3_19, exio3_11, row_region_mappings)
 
     # Write the results
     pd.DataFrame(climate_aquatic).to_csv("pipeline/output/pdf-climate-aquatic.csv", index=True)
@@ -506,6 +576,8 @@ def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings):
     pd.DataFrame(acidification_nox).to_csv("pipeline/output/pdf-acidification-nox.csv", index=True)
     pd.DataFrame(acidification_nh3).to_csv("pipeline/output/pdf-acidification-nh3.csv", index=True)
     pd.DataFrame(acidification_sox).to_csv("pipeline/output/pdf-acidification-sox.csv", index=True)
+    pd.DataFrame(freshwater_p_water).to_csv("pipeline/output/pdf-freshwater-eutrophication-water.csv", index=True)
+    pd.DataFrame(freshwater_p_soil).to_csv("pipeline/output/pdf-freshwater-eutrophication-soil.csv", index=True)
 
 
 def main():
