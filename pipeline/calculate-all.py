@@ -166,6 +166,30 @@ def get_country_code(name):
             return None
 
 
+def get_row_regions(lci_country_codes, exio_country_codes):
+    """
+    Get the country codes from lci countries that don't exist in exiobase i.e. rest of the world countries.
+    """
+    row_regions = []
+    for country in lci_country_codes:
+        if country not in exio_country_codes:
+            row_regions.append(country)
+    
+    # find duplicates in the list
+    duplicates = []
+    unique_regions = []
+    seen_once = set()
+    for item in row_regions:
+        if item not in seen_once:
+            unique_regions.append(item)
+            seen_once.add(item)
+        else:
+            duplicates.append(item)
+    if duplicates:
+        print("Duplicates found in row regions:", duplicates)
+    return unique_regions
+
+
 def dr_s(D_cba):
     print("Calculating dr_s")
     columns = {}
@@ -175,64 +199,14 @@ def dr_s(D_cba):
     dr_s = pd.DataFrame(columns)
     return dr_s
 
-def dr_u(dr_s):
+def dr_u(dr_s, row_region_mappings, row_countries):
     print("Calculating dr_u")
-    row_eu_countries = {
-        'AL': 'Albania',
-        'AZ': 'Azerbaijan',
-        'BA': 'Bosnia and Herzegovina',
-        'BY': 'Belarus',
-        'IS': 'Iceland',
-        'GL': 'Greenland',
-        'GE': 'Georgia',
-        'MK': 'Macedonia',
-        'MD': 'Moldova',
-        'RS': 'Serbia',
-        'UA': 'Ukraine',
-        # overseas territories of EU countries 
-        'GP': 'Guadeloupe',
-        'GF': 'French Guiana',
-        'RE': 'Reunion',
-        'VC': 'Saint Vincent and the Grenadines',
-    }
-
-    row_asia_pacific_countries = {
-        'BD': 'Bangladesh', 'BN': 'Brunei', 'BT': 'Bhutan',
-        'KH': 'Cambodia', 'FJ': 'Fiji',
-        'KZ': 'Kazakhstan', 'KG': 'Kyrgyzstan', 'LA': 'Laos', 'MY': 'Malaysia', 'MV': 'Maldives',
-        'MN': 'Mongolia', 'MM': 'Myanmar (Burma)', 'NP': 'Nepal', 'NZ': 'New Zealand',
-        'KP': 'North Korea', 'PK': 'Pakistan', 'PG': 'Papua New Guinea', 'PH': 'Philippines',
-        'WS': 'Samoa', 'SB': 'Solomon Islands', 'LK': 'Sri Lanka', 'SG': 'Singapore',
-        'TJ': 'Tajikistan', 'TH': 'Thailand', 'TO': 'Tonga', 'TM': 'Turkmenistan',
-        'UZ': 'Uzbekistan', 'VU': 'Vanuatu', 'VN': 'Vietnam'
-    }
-
-    row_african_countries = {
-        'DZ': 'Algeria', 'AO': 'Angola', 'BJ': 'Benin', 'BW': 'Botswana', 'BF': 'Burkina Faso', 'BI': 'Burundi',
-        'CM': 'Cameroon', 'CV': 'Cape Verde', 'CF': 'Central African Republic', 'TD': 'Chad', 'KM': 'Comoros',
-        'CG': 'Congo', 'CD': 'Congo DRC', 'DJ': 'Djibouti', 'EG': 'Egypt', 'EH': 'Western Sahara', 'GQ': 'Equatorial Guinea', 'ER': 'Eritrea',
-        'ET': 'Ethiopia', 'GA': 'Gabon', 'GM': 'Gambia, The', 'GH': 'Ghana', 'GN': 'Guinea', 'GW': 'Guinea-Bissau',
-        'CI': 'Ivory Coast', 'KE': 'Kenya', 'LS': 'Lesotho', 'LR': 'Liberia', 'LY': 'Libya', 'MG': 'Madagascar',
-        'MW': 'Malawi', 'ML': 'Mali', 'MR': 'Mauritania', 'MU': 'Mauritius', 'MA': 'Morocco', 'MZ': 'Mozambique', 'MQ': 'Martinique',
-        'NA': 'Namibia', 'NE': 'Niger', 'NG': 'Nigeria', 'RW': 'Rwanda', 'ST': 'São Tomé and Príncipe', 'SN': 'Senegal',
-        'SL': 'Sierra Leone', 'SO': 'Somalia', 'SZ': 'Eswatini',
-        'SD': 'Sudan', 'TZ': 'Tanzania', 'TG': 'Togo', 'TN': 'Tunisia', 'UG': 'Uganda', 'ZM': 'Zambia', 'ZW': 'Zimbabwe'
-    }
-
-    row_american_countries = {
-        'AW': 'Aruba', 'AR': 'Argentina', 'BS': 'Bahamas, The', 'BZ': 'Belize', 'BO': 'Bolivia',
-        'BB': 'Barbados', 'CL': 'Chile', 'CO': 'Colombia', 'CR': 'Costa Rica', 'CU': 'Cuba', 'DO': 'Dominican Republic',
-        'EC': 'Ecuador', 'SV': 'El Salvador', 'GD': 'Grenada', 'GT': 'Guatemala', 'GY': 'Guyana', 'HT': 'Haiti', 'HN': 'Honduras', 'JM': 'Jamaica',
-        'NI': 'Nicaragua', 'PA': 'Panama', 'PY': 'Paraguay', 'PE': 'Peru', 'PR': 'Puerto Rico', 'LC': 'Saint Lucia',
-        'SR': 'Suriname', 'TT': 'Trinidad and Tobago', 'UY': 'Uruguay', 'VE': 'Venezuela'
-    }
-
-    row_middle_eastern_countries = {
-        'AF': 'Afghanistan', 'AM': 'Armenia', 'BH': 'Bahrain',
-        'IR': 'Iran', 'IQ': 'Iraq', 'IL': 'Israel', 'JO': 'Jordan', 'KW': 'Kuwait', 'LB': 'Lebanon', 'OM': 'Oman',
-        'QA': 'Qatar', 'SA': 'Saudi Arabia', 'SY': 'Syria', 'AE': 'United Arab Emirates',
-        'YE': 'Yemen'
-    }
+    # Get region mappings from arguments
+    row_eu_countries = row_region_mappings["row_eu"]
+    row_asia_pacific_countries = row_region_mappings["row_asia_pacific"]
+    row_african_countries = row_region_mappings["row_africa"]
+    row_american_countries = row_region_mappings["row_america"]
+    row_middle_eastern_countries = row_region_mappings["row_middle_east"]
 
     row_regions = {
         "WA": "Asia and pacific",
@@ -264,9 +238,9 @@ def dr_u(dr_s):
     dr_u = dr_u.drop(index=row_regions.keys(), level='region')
 
     all_row_region_keys = list(row_eu_countries.keys()) + list(row_asia_pacific_countries.keys()) + list(row_african_countries.keys()) + list(row_american_countries.keys()) + list(row_middle_eastern_countries.keys())
-    # build a mapping of country codes to region dataframes
+    # build a mapping of country codes to region dataframes - only for row countries 
     country_to_region = {}
-    for region in all_row_region_keys:
+    for region in row_countries:
         if region in row_eu_countries:
             country_to_region[region] = we
         elif region in row_asia_pacific_countries:
@@ -278,16 +252,19 @@ def dr_u(dr_s):
         elif region in row_middle_eastern_countries:
             country_to_region[region] = wm
         else:
-            raise ValueError(f"Unknown region: {region}")
+            print(f"Country {region} not found in any mapping, skipping.")
 
-    # add all new regions to dr_u
+    # add all new regions that don't exist in exiobase to dr_u
     all_indices = []
     all_data = []
-    for region in all_row_region_keys:
-        region_data = country_to_region[region].copy()
-        idx = pd.MultiIndex.from_product([[region],region_data.index], names=['region', 'sector'])
-        all_indices.append(idx)
-        all_data.append(region_data)
+    for region in row_countries:
+        if region in country_to_region:  # Only add if we found a mapping
+            region_data = country_to_region[region].copy()
+            idx = pd.MultiIndex.from_product([[region],region_data.index], names=['region', 'sector'])
+            all_indices.append(idx)
+            all_data.append(region_data)
+        else:
+            print(f"ERROR: Region %s not found in country to region map, this should not happen", region)
 
     combined_idx = pd.MultiIndex.from_tuples(
         [idx for subidx in all_indices for idx in subidx]
@@ -336,8 +313,16 @@ def pdf(lci, dr_f, stressor_name):
     return pdf_total
 
 
-def ozone_formation(lci_ozone, exio3_19, exio3_11):
+def ozone_formation(lci_ozone, exio3_19, exio3_11, row_region_mappings):
     print("Calculating PDF/€ ozone formation")
+    
+    # Get EXIOBASE regions
+    exio_regions = exio3_19.get_regions()
+    
+    # Get row regions for ozone
+    row_ozone = get_row_regions(lci_ozone["Country_Code"].tolist(), exio_regions)
+    print("Row regions for ozone:", row_ozone)
+    
     nmvoc_diag = exio3_11.satellite.diag_stressor(("NMVOC - combustion - air"))
     nox_diag = exio3_11.satellite.diag_stressor(("NOx - combustion - air"))
 
@@ -347,8 +332,8 @@ def ozone_formation(lci_ozone, exio3_19, exio3_11):
     dr_s_nmvoc = dr_s(D_cba_nmvoc)
     dr_s_nox = dr_s(D_cba_nox)
 
-    dr_u_nmvoc = dr_u(dr_s_nmvoc)
-    dr_u_nox = dr_u(dr_s_nox)
+    dr_u_nmvoc = dr_u(dr_s_nmvoc, row_region_mappings, row_ozone)
+    dr_u_nox = dr_u(dr_s_nox, row_region_mappings, row_ozone)
 
     dr_f_nmvoc = dr_f(exio3_19, dr_u_nmvoc, "NMVOC - combustion - air")
     dr_f_nox = dr_f(exio3_19, dr_u_nox, "NOx - combustion - air")
@@ -405,7 +390,7 @@ def climate_change(lci_climate, exio3_19):
     return climate_aquatic, climate_terrestrial
 
 
-def calculate_all(lci_path, exio_19_path, exio_11_path):
+def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings):
     lci_climate, lci_ozone, lci_acidification, lci_freshwater_eutrophication, lci_marine_eutrophication, lci_land, lci_water = load_lci(lci_path)
 
     # exiobase 2019 is used for impact factors
@@ -421,7 +406,7 @@ def calculate_all(lci_path, exio_19_path, exio_11_path):
     climate_aquatic, climate_terrestrial = climate_change(lci_climate, exio3_19)
 
     # Calculate ozone formation impact
-    ozone_nmvoc, ozone_nox = ozone_formation(lci_ozone, exio3_19, exio3_11)
+    ozone_nmvoc, ozone_nox = ozone_formation(lci_ozone, exio3_19, exio3_11, row_region_mappings)
 
     # Write the results
     pd.DataFrame(climate_aquatic).to_csv("pipeline/output/pdf-climate-aquatic.csv", index=True)
@@ -447,7 +432,7 @@ def main():
         print("Successfully parsed JSON file:")
         print(json.dumps(data, indent=4))  # Pretty-print JSON
 
-        calculate_all(data['lc_impact_path'], data['exio_19_path'], data['exio_11_path'])
+        calculate_all(data['lc_impact_path'], data['exio_19_path'], data['exio_11_path'], data['row_region_mappings'])
     except FileNotFoundError:
         print(f"Error: File '{json_file}' not found.")
     except json.JSONDecodeError as e:

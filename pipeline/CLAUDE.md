@@ -33,6 +33,15 @@ contains five 'rest of the world' region categories: asia pacific, americas, afr
 and europe. Harmonizing regions means taking the countries from a specific lc-impact
 dataset, checking which ones are not directly found from EXIOBASE and categorizing
 these not found countries into rest of the world regions.
+- **cba**: cba refers to 'consumption-based accounts' which means how impacts of consumption
+are distributed across impact regions. D_cba is a matrix where each column is a country-product
+pair and rows tell the impacts in different impact regions.
+- **dr_s**: dr_s is a normalized version of cba. It tells the share of the consumption in different
+impact regions.
+- **dr_u**: dr_u is augmented version of dr_s. In the augmentation process, the countries that
+don't exist in EXIOBASE are added to dr_s. The value for each new region is the value of the
+corresponding region (e.g. asia) divided by the number of countries in that region. Thus the
+calculation assumes that the impacts are evenly distributed across the region.
 
 ## Common Commands
 
