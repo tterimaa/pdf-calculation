@@ -502,6 +502,54 @@ def augment_freshwater(lci_freshwater):
     return lci_freshwater
 
 
+def augment_marine(lci_marine):
+    n_w_eu = 3.86913531769129E-15
+    luxembourg_row = pd.DataFrame({
+        "Country": ["Luxembourg"],
+        "Country_Code": ["LU"],
+        "CF for direct N emission to marine system [PDF*yr/kg]": [n_w_eu],
+    })
+    switzerland_row = pd.DataFrame({
+        "Country": ["Switzerland"],
+        "Country_Code": ["CH"],
+        "CF for direct N emission to marine system [PDF*yr/kg]": [n_w_eu],
+    })
+    lci_marine = pd.concat([lci_marine, luxembourg_row, switzerland_row], ignore_index=True)
+    return lci_marine
+
+
+def marine_eutrophication(lci_marine, exio3_19, exio3_11, row_region_mappings):
+    print("Calculating PDF/€ marine eutrophication")
+    
+    # Get EXIOBASE regions
+    exio_regions = exio3_19.get_regions()
+    
+    # Define row regions (rest of world regions in EXIOBASE)
+    row_regions = {"WA": "Asia and pacific", "WE": "Europe", "WF": "Africa", "WM": "Middle east", "WL": "America"}
+    exio_regions_without_row = [region for region in exio_regions if region not in row_regions.keys()]
+    
+    # Check if marine data needs augmentation
+    if len(get_missing_from_lci(exio_regions_without_row, lci_marine)) > 0:
+        print("Missing from LCI marine eutrophication:", get_missing_from_lci(exio_regions_without_row, lci_marine))
+        lci_marine = augment_marine(lci_marine)
+        assert len(get_missing_from_lci(exio_regions_without_row, lci_marine)) == 0, "There are still missing regions in marine eutrophication after augmentation"
+    
+    # Get row regions for marine eutrophication
+    row_marine = get_row_regions(lci_marine["Country_Code"].tolist(), exio_regions)
+    print("Row regions for marine eutrophication:", row_marine)
+    
+    # Calculate for nitrogen water emissions
+    n_diag = exio3_11.satellite.diag_stressor(("N - agriculture - water"))
+
+    D_cba_n = calculate_cba(exio3_11, n_diag, exio3_11.L)
+    dr_s_n = dr_s(D_cba_n)
+    dr_u_n = dr_u(dr_s_n, row_region_mappings, row_marine)
+    dr_f_n = dr_f(exio3_19, dr_u_n, "N - agriculture - water")
+    marine_n = pdf(lci_marine, dr_f_n, "CF for direct N emission to marine system [PDF*yr/kg]")
+
+    return marine_n
+
+
 def freshwater_eutrophication(lci_freshwater, exio3_19, exio3_11, row_region_mappings):
     print("Calculating PDF/€ freshwater eutrophication")
     
@@ -567,6 +615,9 @@ def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings):
     
     # Calculate freshwater eutrophication impact
     freshwater_p_water, freshwater_p_soil = freshwater_eutrophication(lci_freshwater_eutrophication, exio3_19, exio3_11, row_region_mappings)
+    
+    # Calculate marine eutrophication impact
+    marine_n = marine_eutrophication(lci_marine_eutrophication, exio3_19, exio3_11, row_region_mappings)
 
     # Write the results
     pd.DataFrame(climate_aquatic).to_csv("pipeline/output/pdf-climate-aquatic.csv", index=True)
@@ -578,6 +629,7 @@ def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings):
     pd.DataFrame(acidification_sox).to_csv("pipeline/output/pdf-acidification-sox.csv", index=True)
     pd.DataFrame(freshwater_p_water).to_csv("pipeline/output/pdf-freshwater-eutrophication-water.csv", index=True)
     pd.DataFrame(freshwater_p_soil).to_csv("pipeline/output/pdf-freshwater-eutrophication-soil.csv", index=True)
+    pd.DataFrame(marine_n).to_csv("pipeline/output/pdf-marine-eutrophication.csv", index=True)
 
 
 def main():
