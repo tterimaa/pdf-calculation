@@ -431,6 +431,249 @@ def acidification(lci_acidification, exio3_19, exio3_11, row_region_mappings):
     return acidification_nox, acidification_nh3, acidification_sox
 
 
+def augment_land(lci_land):
+    # taiwan is missing from lc-impact, add taiwan as new row with country code TW and asia averages
+    cf_annual_asia = 1.4159650959661E-15
+    cf_permanent_asia = 1.02741974515257E-15
+    cf_average_asia = (cf_annual_asia + cf_permanent_asia) / 2
+    row = pd.DataFrame({
+        "Country": ["Taiwan"],
+        "Average": [cf_average_asia],
+        "Annual crops Median": [cf_annual_asia],
+        "Permanent crops Median": [cf_permanent_asia],
+        "Pasture Median": [cf_annual_asia],
+        "Country_Code": ["TW"],
+    })
+    lci_land = pd.concat([lci_land, row], ignore_index=True)
+    return lci_land
+
+
+def land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings):
+    print("Calculating PDF/€ land use (annual and permanent crops)")
+
+    # Get EXIOBASE regions
+    exio_regions = exio3_19.get_regions()
+    
+    # Define row regions (rest of world regions in EXIOBASE)
+    row_regions = {"WA": "Asia and pacific", "WE": "Europe", "WF": "Africa", "WM": "Middle east", "WL": "America"}
+    exio_regions_without_row = [region for region in exio_regions if region not in row_regions.keys()]
+    
+    if (len(get_missing_from_lci(exio_regions_without_row, lci_land)) > 0):
+        print("Missing from LCI land use:", get_missing_from_lci(exio_regions_without_row, lci_land))
+        lci_land = augment_land(lci_land)
+        assert len(get_missing_from_lci(exio_regions_without_row, lci_land)) == 0, "There are still missing regions in land use after augmentation"
+    
+    # Get row regions
+    row_land = get_row_regions(lci_land["Country_Code"].tolist(), exio_regions)
+    print("Row regions for land use:", row_land)
+    
+    # Annual / permanent crops
+    grouping_pattern_annual_permanent={
+            "Cropland - Cereal grains nec Cropland": "Land stress - annual and permanent",
+            "Crops nec": "Land stress - annual and permanent",
+            "Cropland - Oil seeds": "Land stress - annual and permanent",
+            "Cropland - Paddy rice": "Land stress - annual and permanent",
+            "Cropland - Plant-based fibers": "Land stress - annual and permanent",
+            "Cropland - Sugar cane, sugar beet": "Land stress - annual and permanent",
+            "Cropland - Vegetables, fruit, nuts": "Land stress - annual and permanent",
+            "Cropland - Wheat": "Land stress - annual and permanent",
+    }
+    groups = exio3_11.satellite.get_index(
+        as_dict=True,
+        grouping_pattern=grouping_pattern_annual_permanent
+    )
+
+    exio3_11.satellite_agg = exio3_11.satellite.copy(new_name="Aggregated land stress - annual and permanent")
+
+    for df_name, df in zip(exio3_11.satellite_agg.get_DataFrame(data=False, with_unit=True, with_population=False),
+    exio3_11.satellite_agg.get_DataFrame(data=True, with_unit=True, with_population=False)):
+        if df_name == "unit":
+            exio3_11.satellite_agg.__dict__[df_name] = df.groupby(groups).apply(lambda x: " & ".join(x.unit.unique()))
+        else:
+            exio3_11.satellite_agg.__dict__[df_name] = df.groupby(groups).sum()
+
+    groups = exio3_19.satellite.get_index(
+        as_dict=True,
+        grouping_pattern=grouping_pattern_annual_permanent
+    )
+
+    exio3_19.satellite_agg = exio3_19.satellite.copy(new_name="Aggregated land stress - annual and permanent")
+
+    for df_name, df in zip(exio3_19.satellite_agg.get_DataFrame(data=False, with_unit=True, with_population=False),
+    exio3_19.satellite_agg.get_DataFrame(data=True, with_unit=True, with_population=False)):
+        if df_name == "unit":
+            exio3_19.satellite_agg.__dict__[df_name] = df.groupby(groups).apply(lambda x: " & ".join(x.unit.unique()))
+        else:
+            exio3_19.satellite_agg.__dict__[df_name] = df.groupby(groups).sum()
+
+    annual_diag = exio3_11.satellite_agg.diag_stressor("Land stress - annual and permanent")
+    D_cba_annual = calculate_cba(exio3_11, annual_diag, exio3_11.L)
+    dr_s_annual = dr_s(D_cba_annual)
+    dr_u_annual = dr_u(dr_s_annual, row_region_mappings, row_land)
+    dr_f_annual = dr_f(exio3_19.satellite_agg, dr_u_annual, 'Land stress - annual and permanent')
+    land_annual_permanent_crops = pdf(lci_land, dr_f_annual, "Permanent crops Median")
+
+    return land_annual_permanent_crops
+
+
+def land_annual(lci_land, exio3_11, exio3_19, row_region_mappings):
+    print("Calculating PDF/€ land use (annual crops)")
+
+    # Get EXIOBASE regions
+    exio_regions = exio3_19.get_regions()
+    
+    # Define row regions (rest of world regions in EXIOBASE)
+    row_regions = {"WA": "Asia and pacific", "WE": "Europe", "WF": "Africa", "WM": "Middle east", "WL": "America"}
+    exio_regions_without_row = [region for region in exio_regions if region not in row_regions.keys()]
+    
+    if (len(get_missing_from_lci(exio_regions_without_row, lci_land)) > 0):
+        print("Missing from LCI land use:", get_missing_from_lci(exio_regions_without_row, lci_land))
+        lci_land = augment_land(lci_land)
+        assert len(get_missing_from_lci(exio_regions_without_row, lci_land)) == 0, "There are still missing regions in land use after augmentation"
+    
+    # Get row regions
+    row_land = get_row_regions(lci_land["Country_Code"].tolist(), exio_regions)
+    print("Row regions for land use:", row_land)
+    
+    # Annual crops
+    grouping_pattern_annual={
+        "Cropland - Fodder crops-Cattle": "Land stress - annual crops",
+        "Cropland - Fodder crops-Meat animals nec": "Land stress - annual crops",
+        "Cropland - Fodder crops-Pigs": "Land stress - annual crops",
+        "Cropland - Fodder crops-Poultry": "Land stress - annual crops",
+        "Cropland - Fodder crops-Raw milk": "Land stress - annual crops",
+    }
+    groups = exio3_11.satellite.get_index(
+        as_dict=True,
+        grouping_pattern=grouping_pattern_annual
+    )
+
+    exio3_11.satellite_agg = exio3_11.satellite.copy(new_name="Aggregated land stress - annual crops")
+
+    for df_name, df in zip(exio3_11.satellite_agg.get_DataFrame(data=False, with_unit=True, with_population=False),
+    exio3_11.satellite_agg.get_DataFrame(data=True, with_unit=True, with_population=False)):
+        if df_name == "unit":
+            exio3_11.satellite_agg.__dict__[df_name] = df.groupby(groups).apply(lambda x: " & ".join(x.unit.unique()))
+        else:
+            exio3_11.satellite_agg.__dict__[df_name] = df.groupby(groups).sum()
+
+    groups = exio3_19.satellite.get_index(
+        as_dict=True,
+        grouping_pattern=grouping_pattern_annual
+    )
+
+    exio3_19.satellite_agg = exio3_19.satellite.copy(new_name="Aggregated land stress - annual crops")
+
+    for df_name, df in zip(exio3_19.satellite_agg.get_DataFrame(data=False, with_unit=True, with_population=False),
+    exio3_19.satellite_agg.get_DataFrame(data=True, with_unit=True, with_population=False)):
+        if df_name == "unit":
+            exio3_19.satellite_agg.__dict__[df_name] = df.groupby(groups).apply(lambda x: " & ".join(x.unit.unique()))
+        else:
+            exio3_19.satellite_agg.__dict__[df_name] = df.groupby(groups).sum()
+    
+    annual_diag = exio3_11.satellite_agg.diag_stressor("Land stress - annual crops")
+    D_cba_annual = calculate_cba(exio3_11, annual_diag, exio3_11.L)
+    dr_s_annual = dr_s(D_cba_annual)
+    dr_u_annual = dr_u(dr_s_annual, row_region_mappings, row_land)
+    dr_f_annual = dr_f(exio3_19.satellite_agg, dr_u_annual, "Land stress - annual crops")
+    land_annual_crops = pdf(lci_land, dr_f_annual, "Annual crops Median")
+
+    return land_annual_crops
+
+
+def land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings):
+    print("Calculating PDF/€ land use (pasture)")
+
+    # Get EXIOBASE regions
+    exio_regions = exio3_19.get_regions()
+    
+    # Define row regions (rest of world regions in EXIOBASE)
+    row_regions = {"WA": "Asia and pacific", "WE": "Europe", "WF": "Africa", "WM": "Middle east", "WL": "America"}
+    exio_regions_without_row = [region for region in exio_regions if region not in row_regions.keys()]
+    
+    if (len(get_missing_from_lci(exio_regions_without_row, lci_land)) > 0):
+        print("Missing from LCI land use:", get_missing_from_lci(exio_regions_without_row, lci_land))
+        lci_land = augment_land(lci_land)
+        assert len(get_missing_from_lci(exio_regions_without_row, lci_land)) == 0, "There are still missing regions in land use after augmentation"
+    
+    # Get row regions
+    row_land = get_row_regions(lci_land["Country_Code"].tolist(), exio_regions)
+    print("Row regions for land use:", row_land)
+
+    # Pasture
+    grouping_pattern_pasture={
+        "Permanent pastures - Grazing-Cattle": "Land stress - pasture",
+        "Permanent pastures - Grazing-Meat animals": "Land stress - pasture",
+        "Permanent pastures - Grazing-Raw milk": "Land stress - pasture",
+    }
+    groups = exio3_11.satellite.get_index(
+        as_dict=True,
+        grouping_pattern=grouping_pattern_pasture
+    )
+
+    exio3_11.satellite_agg = exio3_11.satellite.copy(new_name="Aggregated land stress - pasture")
+
+    for df_name, df in zip(exio3_11.satellite_agg.get_DataFrame(data=False, with_unit=True, with_population=False),
+    exio3_11.satellite_agg.get_DataFrame(data=True, with_unit=True, with_population=False)):
+        if df_name == "unit":
+            exio3_11.satellite_agg.__dict__[df_name] = df.groupby(groups).apply(lambda x: " & ".join(x.unit.unique()))
+        else:
+            exio3_11.satellite_agg.__dict__[df_name] = df.groupby(groups).sum()
+
+    groups = exio3_19.satellite.get_index(
+        as_dict=True,
+        grouping_pattern=grouping_pattern_pasture
+    )
+
+    exio3_19.satellite_agg = exio3_19.satellite.copy(new_name="Aggregated land stress - pasture")
+
+    for df_name, df in zip(exio3_19.satellite_agg.get_DataFrame(data=False, with_unit=True, with_population=False),
+    exio3_19.satellite_agg.get_DataFrame(data=True, with_unit=True, with_population=False)):
+        if df_name == "unit":
+            exio3_19.satellite_agg.__dict__[df_name] = df.groupby(groups).apply(lambda x: " & ".join(x.unit.unique()))
+        else:
+            exio3_19.satellite_agg.__dict__[df_name] = df.groupby(groups).sum()
+    
+    pasture_diag = exio3_11.satellite_agg.diag_stressor("Land stress - pasture")
+    D_cba_pasture = calculate_cba(exio3_11, pasture_diag, exio3_11.L)
+    dr_s_pasture = dr_s(D_cba_pasture)
+    dr_u_pasture = dr_u(dr_s_pasture, row_region_mappings, row_land)
+    dr_f_pasture = dr_f(exio3_19.satellite_agg, dr_u_pasture, "Land stress - pasture")
+    land_pasture = pdf(lci_land, dr_f_pasture, "Pasture Median")
+
+    return land_pasture
+
+
+def land_forestry(lci_land, exio3_11, exio3_19, row_region_mappings):
+    print("Calculating PDF/€ land use (forestry)")
+
+    # Get EXIOBASE regions
+    exio_regions = exio3_19.get_regions()
+    
+    # Define row regions (rest of world regions in EXIOBASE)
+    row_regions = {"WA": "Asia and pacific", "WE": "Europe", "WF": "Africa", "WM": "Middle east", "WL": "America"}
+    exio_regions_without_row = [region for region in exio_regions if region not in row_regions.keys()]
+    
+    if (len(get_missing_from_lci(exio_regions_without_row, lci_land)) > 0):
+        print("Missing from LCI land use:", get_missing_from_lci(exio_regions_without_row, lci_land))
+        lci_land = augment_land(lci_land)
+        assert len(get_missing_from_lci(exio_regions_without_row, lci_land)) == 0, "There are still missing regions in land use after augmentation"
+    
+    # Get row regions
+    row_land = get_row_regions(lci_land["Country_Code"].tolist(), exio_regions)
+    print("Row regions for land use:", row_land)
+
+    # Forestry
+    forestry_diag = exio3_11.satellite.diag_stressor(("Forest area - Forestry"))
+    D_cba_forestry = calculate_cba(exio3_11, forestry_diag, exio3_11.L)
+    dr_s_forestry = dr_s(D_cba_forestry)
+    dr_u_forestry = dr_u(dr_s_forestry, row_region_mappings, row_land)
+    dr_f_forestry = dr_f(exio3_19.satellite, dr_u_forestry, "Forest area - Forestry")
+    land_forestry = pdf(lci_land, dr_f_forestry, "Forestry Median")
+
+    return land_forestry
+
+
 def climate_change(lci_climate, exio3_19):
     print("Calculating PDF/€ ozone formation")
 
@@ -692,6 +935,12 @@ def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings):
     
     # Calculate water consumption impact
     water_total = water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings)
+    
+    # Calculate land use impact
+    land_annual_permanent_impact = land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings)
+    land_annual_impact = land_annual(lci_land, exio3_11, exio3_19, row_region_mappings)
+    land_pasture_impact = land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings)
+    land_forestry_impact = land_forestry(lci_land, exio3_11, exio3_19, row_region_mappings)
 
     # Write the results
     pd.DataFrame(climate_aquatic).to_csv("pipeline/output/pdf-climate-aquatic.csv", index=True)
@@ -705,6 +954,10 @@ def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings):
     pd.DataFrame(freshwater_p_soil).to_csv("pipeline/output/pdf-freshwater-eutrophication-soil.csv", index=True)
     pd.DataFrame(marine_n).to_csv("pipeline/output/pdf-marine-eutrophication.csv", index=True)
     pd.DataFrame(water_total).to_csv("pipeline/output/pdf-water-consumption.csv", index=True)
+    pd.DataFrame(land_annual_permanent_impact).to_csv("pipeline/output/pdf-land-annual-permanent-crops.csv", index=True)
+    pd.DataFrame(land_annual_impact).to_csv("pipeline/output/pdf-land-annual-crops.csv", index=True)
+    pd.DataFrame(land_pasture_impact).to_csv("pipeline/output/pdf-land-pasture.csv", index=True)
+    pd.DataFrame(land_forestry_impact).to_csv("pipeline/output/pdf-land-forestry.csv", index=True)
 
 
 def main():
