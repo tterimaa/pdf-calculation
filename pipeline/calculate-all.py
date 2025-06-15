@@ -235,7 +235,7 @@ def dr_u(dr_s, row_region_mappings, row_countries):
     wm = wm / len(row_middle_eastern_countries)
 
     dr_u = dr_s.copy()
-    dr_u = dr_u.drop(index=row_regions.keys(), level='region')
+    dr_u = dr_u.drop(index=list(row_regions.keys()), level='region')
 
     all_row_region_keys = list(row_eu_countries.keys()) + list(row_asia_pacific_countries.keys()) + list(row_african_countries.keys()) + list(row_american_countries.keys()) + list(row_middle_eastern_countries.keys())
     # build a mapping of country codes to region dataframes - only for row countries 
@@ -274,6 +274,9 @@ def dr_u(dr_s, row_region_mappings, row_countries):
     combined_data.index = combined_idx
 
     dr_u = pd.concat([dr_u, combined_data])
+
+    # remove row regions from consumption regions (columns)
+    dr_u = dr_u.drop(columns=row_regions.keys(), axis=1, level=0)
     return dr_u
 
 
@@ -282,7 +285,15 @@ def dr_f(satellite, dr_u, stressor_name):
     # use 2019 impact factors for calculating dr_f
     # calculate dr_f - share of the driver of biodiversity loss in impact region i from the total amount of the driver that is driven by consumption in consumption region j, product sector k
     dr_f = dr_u.copy()
-    total = satellite.M.loc[stressor_name]
+    row_regions = {
+        "WA": "Asia and pacific",
+        "WE": "Europe",
+        "WF": "Africa",
+        "WM": "Middle east",
+        "WL": "America"
+    }
+    satellite_cleaned = satellite.M.drop(columns=row_regions.keys(), axis=1, level=0)
+    total = satellite_cleaned.loc[stressor_name]
     scalars = total.to_numpy() # multipliers for each column
 
     # multiply each column of dr_u by the respective column value from exio3_19 impact factors
@@ -313,7 +324,7 @@ def pdf(lci, dr_f, stressor_name):
     return pdf_total
 
 
-def ozone_formation(lci_ozone, exio3_19, exio3_11, row_region_mappings):
+def ozone_formation(lci_ozone, exio3_19, exio3_11, row_region_mappings, store_matrix=False):
     print("Calculating PDF/€ ozone formation")
     
     # Get EXIOBASE regions
@@ -337,6 +348,14 @@ def ozone_formation(lci_ozone, exio3_19, exio3_11, row_region_mappings):
 
     dr_f_nmvoc = dr_f(exio3_19.satellite, dr_u_nmvoc, "NMVOC - combustion - air")
     dr_f_nox = dr_f(exio3_19.satellite, dr_u_nox, "NOx - combustion - air")
+
+    # Save matrices if enabled
+    if store_matrix:
+        import pickle
+        with open("pipeline/output/matrices/pdf-matrix-ozone-nmvoc.pkl", "wb") as f:
+            pickle.dump(dr_f_nmvoc, f)
+        with open("pipeline/output/matrices/pdf-matrix-ozone-nox.pkl", "wb") as f:
+            pickle.dump(dr_f_nox, f)
 
     ozone_nmvoc = pdf(lci_ozone, dr_f_nmvoc, "NMVOC")
     ozone_nox = pdf(lci_ozone, dr_f_nox, "NOx")
@@ -384,7 +403,7 @@ def augment_acid(lci_acidification):
     return lci_acidification
 
 
-def acidification(lci_acidification, exio3_19, exio3_11, row_region_mappings):
+def acidification(lci_acidification, exio3_19, exio3_11, row_region_mappings, store_matrix=False):
     print("Calculating PDF/€ acidification")
     
     # Get EXIOBASE regions
@@ -424,6 +443,16 @@ def acidification(lci_acidification, exio3_19, exio3_11, row_region_mappings):
     dr_f_nh3 = dr_f(exio3_19.satellite, dr_u_nh3, "NH3 - agriculture - air")
     dr_f_sox = dr_f(exio3_19.satellite, dr_u_sox, "SOx - combustion - air")
 
+    # Save matrices if enabled
+    if store_matrix:
+        import pickle
+        with open("pipeline/output/matrices/pdf-matrix-acidification-nox.pkl", "wb") as f:
+            pickle.dump(dr_f_nox, f)
+        with open("pipeline/output/matrices/pdf-matrix-acidification-nh3.pkl", "wb") as f:
+            pickle.dump(dr_f_nh3, f)
+        with open("pipeline/output/matrices/pdf-matrix-acidification-sox.pkl", "wb") as f:
+            pickle.dump(dr_f_sox, f)
+
     acidification_nox = pdf(lci_acidification, dr_f_nox, "CF Nox")
     acidification_nh3 = pdf(lci_acidification, dr_f_nh3, "CF NH3")
     acidification_sox = pdf(lci_acidification, dr_f_sox, "CF Sox")
@@ -448,7 +477,7 @@ def augment_land(lci_land):
     return lci_land
 
 
-def land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings):
+def land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix=False):
     print("Calculating PDF/€ land use (annual and permanent crops)")
 
     # Get EXIOBASE regions
@@ -511,12 +540,19 @@ def land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings):
     dr_s_annual = dr_s(D_cba_annual)
     dr_u_annual = dr_u(dr_s_annual, row_region_mappings, row_land)
     dr_f_annual = dr_f(exio3_19.satellite_agg, dr_u_annual, 'Land stress - annual and permanent')
+    
+    # Save matrix if enabled
+    if store_matrix:
+        import pickle
+        with open("pipeline/output/matrices/pdf-matrix-land-annual-permanent-crops.pkl", "wb") as f:
+            pickle.dump(dr_f_annual, f)
+    
     land_annual_permanent_crops = pdf(lci_land, dr_f_annual, "Permanent crops Median")
 
     return land_annual_permanent_crops
 
 
-def land_annual(lci_land, exio3_11, exio3_19, row_region_mappings):
+def land_annual(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix=False):
     print("Calculating PDF/€ land use (annual crops)")
 
     # Get EXIOBASE regions
@@ -576,12 +612,19 @@ def land_annual(lci_land, exio3_11, exio3_19, row_region_mappings):
     dr_s_annual = dr_s(D_cba_annual)
     dr_u_annual = dr_u(dr_s_annual, row_region_mappings, row_land)
     dr_f_annual = dr_f(exio3_19.satellite_agg, dr_u_annual, "Land stress - annual crops")
+    
+    # Save matrix if enabled
+    if store_matrix:
+        import pickle
+        with open("pipeline/output/matrices/pdf-matrix-land-annual-crops.pkl", "wb") as f:
+            pickle.dump(dr_f_annual, f)
+    
     land_annual_crops = pdf(lci_land, dr_f_annual, "Annual crops Median")
 
     return land_annual_crops
 
 
-def land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings):
+def land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix=False):
     print("Calculating PDF/€ land use (pasture)")
 
     # Get EXIOBASE regions
@@ -639,12 +682,19 @@ def land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings):
     dr_s_pasture = dr_s(D_cba_pasture)
     dr_u_pasture = dr_u(dr_s_pasture, row_region_mappings, row_land)
     dr_f_pasture = dr_f(exio3_19.satellite_agg, dr_u_pasture, "Land stress - pasture")
+    
+    # Save matrix if enabled
+    if store_matrix:
+        import pickle
+        with open("pipeline/output/matrices/pdf-matrix-land-pasture.pkl", "wb") as f:
+            pickle.dump(dr_f_pasture, f)
+    
     land_pasture = pdf(lci_land, dr_f_pasture, "Pasture Median")
 
     return land_pasture
 
 
-def land_forestry(lci_land, exio3_11, exio3_19, row_region_mappings):
+def land_forestry(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix=False):
     print("Calculating PDF/€ land use (forestry)")
 
     # Get EXIOBASE regions
@@ -669,6 +719,13 @@ def land_forestry(lci_land, exio3_11, exio3_19, row_region_mappings):
     dr_s_forestry = dr_s(D_cba_forestry)
     dr_u_forestry = dr_u(dr_s_forestry, row_region_mappings, row_land)
     dr_f_forestry = dr_f(exio3_19.satellite, dr_u_forestry, "Forest area - Forestry")
+    
+    # Save matrix if enabled
+    if store_matrix:
+        import pickle
+        with open("pipeline/output/matrices/pdf-matrix-land-forestry.pkl", "wb") as f:
+            pickle.dump(dr_f_forestry, f)
+    
     land_forestry = pdf(lci_land, dr_f_forestry, "Forestry Median")
 
     return land_forestry
@@ -773,7 +830,7 @@ def augment_water(lci_water):
     return lci_water
 
 
-def water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings):
+def water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings, store_matrix=False):
     print("Calculating PDF/€ water consumption")
     
     # Get EXIOBASE regions
@@ -827,12 +884,19 @@ def water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings):
     # Calculate dr_f manually since we need to use aggregated satellite data
     print("Calculating dr_f for Water Consumption Blue – Total")
     dr_f_water = dr_f(exio3_19.satellite_agg, dr_u_water, "Water Consumption Blue – Total")
+    
+    # Save matrix if enabled
+    if store_matrix:
+        import pickle
+        with open("pipeline/output/matrices/pdf-matrix-water-consumption.pkl", "wb") as f:
+            pickle.dump(dr_f_water, f)
+    
     water_total = pdf(lci_water, dr_f_water, "CF all effects  [PDF·yr/m3]")
 
     return water_total
 
 
-def marine_eutrophication(lci_marine, exio3_19, exio3_11, row_region_mappings):
+def marine_eutrophication(lci_marine, exio3_19, exio3_11, row_region_mappings, store_matrix=False):
     print("Calculating PDF/€ marine eutrophication")
     
     # Get EXIOBASE regions
@@ -859,12 +923,19 @@ def marine_eutrophication(lci_marine, exio3_19, exio3_11, row_region_mappings):
     dr_s_n = dr_s(D_cba_n)
     dr_u_n = dr_u(dr_s_n, row_region_mappings, row_marine)
     dr_f_n = dr_f(exio3_19.satellite, dr_u_n, "N - agriculture - water")
+    
+    # Save matrix if enabled
+    if store_matrix:
+        import pickle
+        with open("pipeline/output/matrices/pdf-matrix-marine-eutrophication.pkl", "wb") as f:
+            pickle.dump(dr_f_n, f)
+    
     marine_n = pdf(lci_marine, dr_f_n, "CF for direct N emission to marine system [PDF*yr/kg]")
 
     return marine_n
 
 
-def freshwater_eutrophication(lci_freshwater, exio3_19, exio3_11, row_region_mappings):
+def freshwater_eutrophication(lci_freshwater, exio3_19, exio3_11, row_region_mappings, store_matrix=False):
     print("Calculating PDF/€ freshwater eutrophication")
     
     # Get EXIOBASE regions
@@ -900,14 +971,29 @@ def freshwater_eutrophication(lci_freshwater, exio3_19, exio3_11, row_region_map
     dr_f_p_water = dr_f(exio3_19.satellite, dr_u_p_water, "P - agriculture - water")
     dr_f_p_soil = dr_f(exio3_19.satellite, dr_u_p_soil, "P - agriculture - soil")
     
+    # Save matrices if enabled
+    if store_matrix:
+        import pickle
+        with open("pipeline/output/matrices/pdf-matrix-freshwater-eutrophication-water.pkl", "wb") as f:
+            pickle.dump(dr_f_p_water, f)
+        with open("pipeline/output/matrices/pdf-matrix-freshwater-eutrophication-soil.pkl", "wb") as f:
+            pickle.dump(dr_f_p_soil, f)
+    
     freshwater_p_water = pdf(lci_freshwater, dr_f_p_water, "CF for P emissions to water [PDFyr/kg]")
     freshwater_p_soil = pdf(lci_freshwater, dr_f_p_soil, "CF for P emissions to soil [PDFyr/kg]")
 
     return freshwater_p_water, freshwater_p_soil
 
 
-def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings):
+def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings, store_matrix=False):
     lci_climate, lci_ozone, lci_acidification, lci_freshwater_eutrophication, lci_marine_eutrophication, lci_land, lci_water = load_lci(lci_path)
+
+    # Create matrices directory if store_matrix is True
+    if store_matrix:
+        import os
+        matrices_dir = "pipeline/output/matrices"
+        os.makedirs(matrices_dir, exist_ok=True)
+        print(f"Matrix storage enabled. Matrices will be saved to {matrices_dir}")
 
     # exiobase 2019 is used for impact factors
     exio3_19 = pymrio.parse_exiobase3(path=exio_19_path)
@@ -922,25 +1008,25 @@ def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings):
     climate_aquatic, climate_terrestrial = climate_change(lci_climate, exio3_19)
 
     # Calculate ozone formation impact
-    ozone_nmvoc, ozone_nox = ozone_formation(lci_ozone, exio3_19, exio3_11, row_region_mappings)
+    ozone_nmvoc, ozone_nox = ozone_formation(lci_ozone, exio3_19, exio3_11, row_region_mappings, store_matrix)
     
     # Calculate acidification impact
-    acidification_nox, acidification_nh3, acidification_sox = acidification(lci_acidification, exio3_19, exio3_11, row_region_mappings)
+    acidification_nox, acidification_nh3, acidification_sox = acidification(lci_acidification, exio3_19, exio3_11, row_region_mappings, store_matrix)
     
     # Calculate freshwater eutrophication impact
-    freshwater_p_water, freshwater_p_soil = freshwater_eutrophication(lci_freshwater_eutrophication, exio3_19, exio3_11, row_region_mappings)
+    freshwater_p_water, freshwater_p_soil = freshwater_eutrophication(lci_freshwater_eutrophication, exio3_19, exio3_11, row_region_mappings, store_matrix)
     
     # Calculate marine eutrophication impact
-    marine_n = marine_eutrophication(lci_marine_eutrophication, exio3_19, exio3_11, row_region_mappings)
+    marine_n = marine_eutrophication(lci_marine_eutrophication, exio3_19, exio3_11, row_region_mappings, store_matrix)
     
     # Calculate water consumption impact
-    water_total = water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings)
+    water_total = water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings, store_matrix)
     
     # Calculate land use impact
-    land_annual_permanent_impact = land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings)
-    land_annual_impact = land_annual(lci_land, exio3_11, exio3_19, row_region_mappings)
-    land_pasture_impact = land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings)
-    land_forestry_impact = land_forestry(lci_land, exio3_11, exio3_19, row_region_mappings)
+    land_annual_permanent_impact = land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix)
+    land_annual_impact = land_annual(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix)
+    land_pasture_impact = land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix)
+    land_forestry_impact = land_forestry(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix)
 
     # Write the results
     pd.DataFrame(climate_aquatic).to_csv("pipeline/output/pdf-climate-aquatic.csv", index=True)
@@ -961,12 +1047,18 @@ def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Process a JSON file.")
-    parser.add_argument("json_file", type=str, help="Path to the JSON file.")
+    parser = argparse.ArgumentParser(description="Calculate PDF (Probability of Disappearance of Fractions) values for various environmental impact categories.")
+    parser.add_argument("json_file", type=str, help="Path to the JSON file containing configuration parameters.")
+    parser.add_argument("--store-matrix", action="store_true", 
+                        help="Store dr_f matrices as pickle files to output/matrices directory. "
+                             "These matrices contain the regional distribution of environmental impacts "
+                             "per euro spent. Climate impact matrices are not stored as they are not "
+                             "regionally distributed.")
     
     # Parse the arguments
     args = parser.parse_args()
     json_file = args.json_file
+    store_matrix = args.store_matrix
 
     try:
         # Open and read the JSON file
@@ -977,7 +1069,7 @@ def main():
         print("Successfully parsed JSON file:")
         print(json.dumps(data, indent=4))  # Pretty-print JSON
 
-        calculate_all(data['lc_impact_path'], data['exio_19_path'], data['exio_11_path'], data['row_region_mappings'])
+        calculate_all(data['lc_impact_path'], data['exio_19_path'], data['exio_11_path'], data['row_region_mappings'], store_matrix)
     except FileNotFoundError:
         print(f"Error: File '{json_file}' not found.")
     except json.JSONDecodeError as e:

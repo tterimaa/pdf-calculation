@@ -11,5 +11,13 @@ Script calculate_all.py calculates all impact factors at once based on the argum
 
 Output files should appear in pipeline/output directory.
 
+### Optional command line arguments
+
+- `--store-matrix`: Store dr_f matrices as pickle files to the output/matrices directory. These matrices contain the regional distribution of environmental impacts per euro spent.
+
+  Example: ```python pipeline/calculate-all.py pipeline/arguments.json --store-matrix```
+  
+  The matrices will be saved with names like `pdf-matrix-ozone-nmvoc.pkl`, `pdf-matrix-land-forestry.pkl`, etc., and can be loaded in Python using the pickle module. Note that climate impact matrices are not stored as they are not regionally distributed.
+
 ## Notes
 - Exiobase and lc-impact versions are currently not dynamic, meaning user of the script needs to manually download correct exiobase version. To make this 100% reproducible, these files should be downloaded and verified based on version number.
