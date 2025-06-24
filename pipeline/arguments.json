@@ -218,5 +218,47 @@
             "AE": "United Arab Emirates",
             "YE": "Yemen"
         }
+    },
+    "exiobase_grouping_patterns": {
+        "climate_change": {
+            "CO2.*": "CO2 - Total",
+            "CH4 - waste - air": "CH4",
+            "CH4 - agriculture - air": "CH4",
+            "CH4 - non combustion - Oil refinery - air": "CH4 fossil",
+            "CH4 - non combustion - Mining of sub-bituminous coal - air": "CH4 fossil",
+            "CH4 - non combustion - Mining of lignite (brown coal) - air": "CH4 fossil",
+            "CH4 - non combustion - Mining of antracite - air": "CH4 fossil",
+            "CH4 - non combustion - Mining of coking coal - air": "CH4 fossil",
+            "CH4 - non combustion - Mining of bituminous coal - air": "CH4 fossil",
+            "CH4 - non combustion - Extraction/production of (natural) gas - air": "CH4 fossil",
+            "CH4 - non combustion - Extraction/production of crude oil": "CH4 fossil", 
+            "CH4 - combustion - air": "CH4 fossil",
+            "NOx.*": "NOx - Total"
+        },
+        "land_annual_permanent": {
+            "Cropland - Cereal grains nec Cropland": "Land stress - annual and permanent",
+            "Crops nec": "Land stress - annual and permanent",
+            "Cropland - Oil seeds": "Land stress - annual and permanent",
+            "Cropland - Paddy rice": "Land stress - annual and permanent",
+            "Cropland - Plant-based fibers": "Land stress - annual and permanent",
+            "Cropland - Sugar cane, sugar beet": "Land stress - annual and permanent",
+            "Cropland - Vegetables, fruit, nuts": "Land stress - annual and permanent",
+            "Cropland - Wheat": "Land stress - annual and permanent"
+        },
+        "land_annual": {
+            "Cropland - Fodder crops-Cattle": "Land stress - annual crops",
+            "Cropland - Fodder crops-Meat animals nec": "Land stress - annual crops",
+            "Cropland - Fodder crops-Pigs": "Land stress - annual crops",
+            "Cropland - Fodder crops-Poultry": "Land stress - annual crops",
+            "Cropland - Fodder crops-Raw milk": "Land stress - annual crops"
+        },
+        "land_pasture": {
+            "Permanent pastures - Grazing-Cattle": "Land stress - pasture",
+            "Permanent pastures - Grazing-Meat animals": "Land stress - pasture",
+            "Permanent pastures - Grazing-Raw milk": "Land stress - pasture"
+        },
+        "water_consumption": {
+            "Water Consumption Blue.*": "Water Consumption Blue – Total"
+        }
     }
 }

@@ -477,7 +477,7 @@ def augment_land(lci_land):
     return lci_land
 
 
-def land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix=False):
+def land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix=False):
     print("Calculating PDF/€ land use (annual and permanent crops)")
 
     # Get EXIOBASE regions
@@ -497,19 +497,9 @@ def land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings, sto
     print("Row regions for land use:", row_land)
     
     # Annual / permanent crops
-    grouping_pattern_annual_permanent={
-            "Cropland - Cereal grains nec Cropland": "Land stress - annual and permanent",
-            "Crops nec": "Land stress - annual and permanent",
-            "Cropland - Oil seeds": "Land stress - annual and permanent",
-            "Cropland - Paddy rice": "Land stress - annual and permanent",
-            "Cropland - Plant-based fibers": "Land stress - annual and permanent",
-            "Cropland - Sugar cane, sugar beet": "Land stress - annual and permanent",
-            "Cropland - Vegetables, fruit, nuts": "Land stress - annual and permanent",
-            "Cropland - Wheat": "Land stress - annual and permanent",
-    }
     groups = exio3_11.satellite.get_index(
         as_dict=True,
-        grouping_pattern=grouping_pattern_annual_permanent
+        grouping_pattern=exiobase_grouping_patterns["land_annual_permanent"]
     )
 
     exio3_11.satellite_agg = exio3_11.satellite.copy(new_name="Aggregated land stress - annual and permanent")
@@ -523,7 +513,7 @@ def land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings, sto
 
     groups = exio3_19.satellite.get_index(
         as_dict=True,
-        grouping_pattern=grouping_pattern_annual_permanent
+        grouping_pattern=exiobase_grouping_patterns["land_annual_permanent"]
     )
 
     exio3_19.satellite_agg = exio3_19.satellite.copy(new_name="Aggregated land stress - annual and permanent")
@@ -552,7 +542,7 @@ def land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings, sto
     return land_annual_permanent_crops
 
 
-def land_annual(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix=False):
+def land_annual(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix=False):
     print("Calculating PDF/€ land use (annual crops)")
 
     # Get EXIOBASE regions
@@ -572,16 +562,9 @@ def land_annual(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix=
     print("Row regions for land use:", row_land)
     
     # Annual crops
-    grouping_pattern_annual={
-        "Cropland - Fodder crops-Cattle": "Land stress - annual crops",
-        "Cropland - Fodder crops-Meat animals nec": "Land stress - annual crops",
-        "Cropland - Fodder crops-Pigs": "Land stress - annual crops",
-        "Cropland - Fodder crops-Poultry": "Land stress - annual crops",
-        "Cropland - Fodder crops-Raw milk": "Land stress - annual crops",
-    }
     groups = exio3_11.satellite.get_index(
         as_dict=True,
-        grouping_pattern=grouping_pattern_annual
+        grouping_pattern=exiobase_grouping_patterns["land_annual"]
     )
 
     exio3_11.satellite_agg = exio3_11.satellite.copy(new_name="Aggregated land stress - annual crops")
@@ -595,7 +578,7 @@ def land_annual(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix=
 
     groups = exio3_19.satellite.get_index(
         as_dict=True,
-        grouping_pattern=grouping_pattern_annual
+        grouping_pattern=exiobase_grouping_patterns["land_annual"]
     )
 
     exio3_19.satellite_agg = exio3_19.satellite.copy(new_name="Aggregated land stress - annual crops")
@@ -624,7 +607,7 @@ def land_annual(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix=
     return land_annual_crops
 
 
-def land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix=False):
+def land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix=False):
     print("Calculating PDF/€ land use (pasture)")
 
     # Get EXIOBASE regions
@@ -644,14 +627,9 @@ def land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix
     print("Row regions for land use:", row_land)
 
     # Pasture
-    grouping_pattern_pasture={
-        "Permanent pastures - Grazing-Cattle": "Land stress - pasture",
-        "Permanent pastures - Grazing-Meat animals": "Land stress - pasture",
-        "Permanent pastures - Grazing-Raw milk": "Land stress - pasture",
-    }
     groups = exio3_11.satellite.get_index(
         as_dict=True,
-        grouping_pattern=grouping_pattern_pasture
+        grouping_pattern=exiobase_grouping_patterns["land_pasture"]
     )
 
     exio3_11.satellite_agg = exio3_11.satellite.copy(new_name="Aggregated land stress - pasture")
@@ -665,7 +643,7 @@ def land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix
 
     groups = exio3_19.satellite.get_index(
         as_dict=True,
-        grouping_pattern=grouping_pattern_pasture
+        grouping_pattern=exiobase_grouping_patterns["land_pasture"]
     )
 
     exio3_19.satellite_agg = exio3_19.satellite.copy(new_name="Aggregated land stress - pasture")
@@ -731,25 +709,11 @@ def land_forestry(lci_land, exio3_11, exio3_19, row_region_mappings, store_matri
     return land_forestry
 
 
-def climate_change(lci_climate, exio3_19):
-    print("Calculating PDF/€ ozone formation")
+def climate_change(lci_climate, exio3_19, exiobase_grouping_patterns):
+    print("Calculating PDF/€ climate change")
 
     # TODO: this grouping should be checked
-    groups = exio3_19.satellite.get_index(as_dict=True, grouping_pattern={
-        "CO2.*": "CO2 - Total",
-        "CH4 - waste - air": "CH4",
-        "CH4 - agriculture - air": "CH4",
-        "CH4 - non combustion - Oil refinery - air": "CH4 fossil",
-        "CH4 - non combustion - Mining of sub-bituminous coal - air": "CH4 fossil",
-        "CH4 - non combustion - Mining of lignite (brown coal) - air": "CH4 fossil",
-        "CH4 - non combustion - Mining of antracite - air": "CH4 fossil",
-        "CH4 - non combustion - Mining of coking coal - air": "CH4 fossil",
-        "CH4 - non combustion - Mining of bituminous coal - air": "CH4 fossil",
-        "CH4 - non combustion - Extraction/production of (natural) gas - air": "CH4 fossil",
-        "CH4 - non combustion - Extraction/production of crude oil": "CH4 fossil", 
-        "CH4 - combustion - air": "CH4 fossil",
-        "NOx.*": "NOx - Total",
-        })
+    groups = exio3_19.satellite.get_index(as_dict=True, grouping_pattern=exiobase_grouping_patterns["climate_change"])
 
     satellite_agg = exio3_19.satellite.copy()
 
@@ -830,7 +794,7 @@ def augment_water(lci_water):
     return lci_water
 
 
-def water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings, store_matrix=False):
+def water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings, exiobase_grouping_patterns, store_matrix=False):
     print("Calculating PDF/€ water consumption")
     
     # Get EXIOBASE regions
@@ -851,7 +815,7 @@ def water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings, store_
     print("Row regions for water consumption:", row_water)
     
     # Aggregate all blue water consumption related drivers
-    groups = exio3_11.satellite.get_index(as_dict=True, grouping_pattern={"Water Consumption Blue.*": "Water Consumption Blue – Total"})
+    groups = exio3_11.satellite.get_index(as_dict=True, grouping_pattern=exiobase_grouping_patterns["water_consumption"])
     
     exio3_11.satellite_agg = exio3_11.satellite.copy(new_name="Aggregated blue water consumption accounts")
     
@@ -870,7 +834,7 @@ def water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings, store_
     dr_u_water = dr_u(dr_s_water, row_region_mappings, row_water)
     
     # Aggregate water consumption drivers for 2019 data
-    groups_19 = exio3_19.satellite.get_index(as_dict=True, grouping_pattern={"Water Consumption Blue.*": "Water Consumption Blue – Total"})
+    groups_19 = exio3_19.satellite.get_index(as_dict=True, grouping_pattern=exiobase_grouping_patterns["water_consumption"])
     
     exio3_19.satellite_agg = exio3_19.satellite.copy(new_name="Aggregated blue water consumption accounts")
     
@@ -985,7 +949,7 @@ def freshwater_eutrophication(lci_freshwater, exio3_19, exio3_11, row_region_map
     return freshwater_p_water, freshwater_p_soil
 
 
-def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings, store_matrix=False):
+def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings, exiobase_grouping_patterns, store_matrix=False):
     lci_climate, lci_ozone, lci_acidification, lci_freshwater_eutrophication, lci_marine_eutrophication, lci_land, lci_water = load_lci(lci_path)
 
     # Create matrices directory if store_matrix is True
@@ -1005,7 +969,7 @@ def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings, sto
     exio3_11.L = pymrio.calc_L(exio3_11.A)
 
     # Calculate climate change impact
-    climate_aquatic, climate_terrestrial = climate_change(lci_climate, exio3_19)
+    climate_aquatic, climate_terrestrial = climate_change(lci_climate, exio3_19, exiobase_grouping_patterns)
 
     # Calculate ozone formation impact
     ozone_nmvoc, ozone_nox = ozone_formation(lci_ozone, exio3_19, exio3_11, row_region_mappings, store_matrix)
@@ -1020,12 +984,12 @@ def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings, sto
     marine_n = marine_eutrophication(lci_marine_eutrophication, exio3_19, exio3_11, row_region_mappings, store_matrix)
     
     # Calculate water consumption impact
-    water_total = water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings, store_matrix)
+    water_total = water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings, exiobase_grouping_patterns, store_matrix)
     
     # Calculate land use impact
-    land_annual_permanent_impact = land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix)
-    land_annual_impact = land_annual(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix)
-    land_pasture_impact = land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix)
+    land_annual_permanent_impact = land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix)
+    land_annual_impact = land_annual(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix)
+    land_pasture_impact = land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix)
     land_forestry_impact = land_forestry(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix)
 
     # Write the results
@@ -1069,7 +1033,7 @@ def main():
         print("Successfully parsed JSON file:")
         print(json.dumps(data, indent=4))  # Pretty-print JSON
 
-        calculate_all(data['lc_impact_path'], data['exio_19_path'], data['exio_11_path'], data['row_region_mappings'], store_matrix)
+        calculate_all(data['lc_impact_path'], data['exio_19_path'], data['exio_11_path'], data['row_region_mappings'], data['exiobase_grouping_patterns'], store_matrix)
     except FileNotFoundError:
         print(f"Error: File '{json_file}' not found.")
     except json.JSONDecodeError as e:
