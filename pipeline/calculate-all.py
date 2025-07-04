@@ -237,7 +237,6 @@ def dr_u(dr_s, row_region_mappings, row_countries):
     dr_u = dr_s.copy()
     dr_u = dr_u.drop(index=list(row_regions.keys()), level='region')
 
-    all_row_region_keys = list(row_eu_countries.keys()) + list(row_asia_pacific_countries.keys()) + list(row_african_countries.keys()) + list(row_american_countries.keys()) + list(row_middle_eastern_countries.keys())
     # build a mapping of country codes to region dataframes - only for row countries 
     country_to_region = {}
     for region in row_countries:
