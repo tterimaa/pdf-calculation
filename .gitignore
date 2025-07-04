@@ -7,3 +7,4 @@ requirements.txt
 .DS_Store
 sources
 pipeline/output
+.claude
