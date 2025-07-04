@@ -274,7 +274,7 @@ def region_to_country(row_countries):
     Returns a map of regions to countries.
     """
     # Load the country mappings from arguments.json
-    with open("pipeline/arguments.json", "r") as f:
+    with open("../arguments.json", "r") as f:
         args = json.load(f)
     
     row_eu_countries = args["row_region_mappings"]["row_eu"]
@@ -309,7 +309,7 @@ def region_to_country(row_countries):
 if __name__ == "__main__":
     # STEP 1: LOAD DATA
     # Load arguments from arguments.json
-    with open("pipeline/arguments.json", "r") as f:
+    with open("../arguments.json", "r") as f:
         args = json.load(f)
     
     lci_path = args["lc_impact_path"]  # Get path from arguments.json
