@@ -463,6 +463,10 @@ def augment_land(lci_land):
     # taiwan is missing from lc-impact, add taiwan as new row with country code TW and asia averages
     cf_annual_asia = 1.4159650959661E-15
     cf_permanent_asia = 1.02741974515257E-15
+    cf_forestry_extensive_asia = 7.54516069592159E-16
+    cf_forestry_intensive_asia = 2.78433669846512E-15
+    cf_forestry_asia = (cf_forestry_extensive_asia + cf_forestry_intensive_asia) / 2
+    cf_urban_asia = 1.64333114974599E-15
     cf_average_asia = (cf_annual_asia + cf_permanent_asia) / 2
     row = pd.DataFrame({
         "Country": ["Taiwan"],
@@ -470,6 +474,8 @@ def augment_land(lci_land):
         "Annual crops Median": [cf_annual_asia],
         "Permanent crops Median": [cf_permanent_asia],
         "Pasture Median": [cf_annual_asia],
+        "Forestry Median": [cf_forestry_asia],
+        "Urban Median": [cf_urban_asia],
         "Country_Code": ["TW"],
     })
     lci_land = pd.concat([lci_land, row], ignore_index=True)
@@ -706,6 +712,43 @@ def land_forestry(lci_land, exio3_11, exio3_19, row_region_mappings, store_matri
     land_forestry = pdf(lci_land, dr_f_forestry, "Forestry Median")
 
     return land_forestry
+
+
+def land_other(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix=False):
+    print("Calculating PDF/€ land use (other/urban)")
+
+    # Get EXIOBASE regions
+    exio_regions = exio3_19.get_regions()
+    
+    # Define row regions (rest of world regions in EXIOBASE)
+    row_regions = {"WA": "Asia and pacific", "WE": "Europe", "WF": "Africa", "WM": "Middle east", "WL": "America"}
+    exio_regions_without_row = [region for region in exio_regions if region not in row_regions.keys()]
+    
+    if (len(get_missing_from_lci(exio_regions_without_row, lci_land)) > 0):
+        print("Missing from LCI land use:", get_missing_from_lci(exio_regions_without_row, lci_land))
+        lci_land = augment_land(lci_land)
+        assert len(get_missing_from_lci(exio_regions_without_row, lci_land)) == 0, "There are still missing regions in land use after augmentation"
+    
+    # Get row regions
+    row_land = get_row_regions(lci_land["Country_Code"].tolist(), exio_regions)
+    print("Row regions for land use:", row_land)
+
+    # Other land use (urban)
+    other_diag = exio3_11.satellite.diag_stressor(("Other land Use: Total"))
+    D_cba_other = calculate_cba(exio3_11, other_diag, exio3_11.L)
+    dr_s_other = dr_s(D_cba_other)
+    dr_u_other = dr_u(dr_s_other, row_region_mappings, row_land)
+    dr_f_other = dr_f(exio3_19.satellite, dr_u_other, "Other land Use: Total")
+    
+    # Save matrix if enabled
+    if store_matrix:
+        import pickle
+        with open("pipeline/output/matrices/pdf-matrix-land-other.pkl", "wb") as f:
+            pickle.dump(dr_f_other, f)
+    
+    land_other = pdf(lci_land, dr_f_other, "Urban Median")
+
+    return land_other
 
 
 def climate_change(lci_climate, exio3_19, exiobase_grouping_patterns):
@@ -990,6 +1033,7 @@ def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings, exi
     land_annual_impact = land_annual(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix)
     land_pasture_impact = land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix)
     land_forestry_impact = land_forestry(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix)
+    land_other_impact = land_other(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix)
 
     # Write the results
     pd.DataFrame(climate_aquatic).to_csv("pipeline/output/pdf-climate-aquatic.csv", index=True)
@@ -1007,6 +1051,7 @@ def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings, exi
     pd.DataFrame(land_annual_impact).to_csv("pipeline/output/pdf-land-annual-crops.csv", index=True)
     pd.DataFrame(land_pasture_impact).to_csv("pipeline/output/pdf-land-pasture.csv", index=True)
     pd.DataFrame(land_forestry_impact).to_csv("pipeline/output/pdf-land-forestry.csv", index=True)
+    pd.DataFrame(land_other_impact).to_csv("pipeline/output/pdf-land-other.csv", index=True)
 
 
 def main():
