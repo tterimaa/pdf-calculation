@@ -768,7 +768,6 @@ def climate_change(lci_climate, exio3_19, exiobase_grouping_patterns):
 
 
     # TODO: check if using 'all effects 100yrs' is correct
-    # TODO: check if summing up all effects is correct
     # calculate aquatic factors
     climate_aquatic = satellite_agg.M.loc['CO2 - Total'] * lci_climate['All effects 100yrs (aquatic)'].values[0] + \
                satellite_agg.M.loc['CH4'] * lci_climate['All effects 100yrs (aquatic)'].values[1] + \
