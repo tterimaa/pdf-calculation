@@ -1,18 +1,25 @@
 # Calculate PDF/€ impact factors by combining data from exiobase and lc-impact
-PDF (potentially disappeared fraction of species) is a metric used in biodiversity impact assesments to quantify the potential impact of human activities on biodiversity.
 
-The code in this repository demonstrate how to calculate consumption based impact factors PDF/€ by combining data from exiobase and lc-impact. The methodology follows the one presented in "Value-transforming financial, carbon and biodiversity footprint accounting" by S. El Geneidy, S. Baumeister, M. Peura, and J.S. Kotiaho
+The code in this repository demonstrates how to calculate consumption based impact factors PDF/€ by combining data from exiobase and lc-impact. PDF (potentially disappeared fraction of species) is a metric used in biodiversity impact assesments to quantify the potential impact of human activities on biodiversity. The methodology aims to follow the one presented in "Value-transforming financial, carbon and biodiversity footprint accounting" by S. El Geneidy, S. Baumeister, M. Peura, and J.S. Kotiaho.
 
-### Notes about regional harmonization
+## Repository structure
+
+pipeline directory contains a script calculate-all.py that automates the full calculation process.
+
+notebooks directory contains jupyter notebooks to demonstrate the calculation process step-by-step. The notebooks can also be used to check intermediate results and debug calculation steps.
+
+The root directory contains arguments.json file which is used as a parameter for both the automated pipeline and the notebooks. This file contains most of the essential parameters for the calculation.
+
+## Notes about regional harmonization
 - Data in lc-impact is not consistent with regions. Some regions that can be found from exiobase are not found in lc-impact, but these missing regions are not consistent across the whole database. For example, water stress impact factors are missing for Malta, and land use factors are missing Taiwan. For missing factors, continental averages were used.
 - Mapping the rest of the world regions in exiobase to lc-impact regions that are not present as direct regions in exiobase is one of the key parameters of these calculations. These mappings are not carefully thought out and should be re-evaluated. For example, some sub-regions of countires might have been left out.
 - lc-impact data does not always make sense: e.g. the island of Saint Martin appears twice with different impact factors in land stress data as 'Sint Maartin' and 'Saint Martin'.
 
-### Q&A
+## Q&A
 
 In general, most of the inclarity regarding the methodology is related to what are the 'connecting stressor in LC-impact' (table S5) exactly. LC-impact provides more than one option for the CFs. Also some details like which countries are considered as part of which rest of the world region is unclear.
 
-#### Climate
+### Climate
 
 Q: What is the correct exiobase stressor for climate? Table S5 mentions 'Climate change midpoint | ILCD recommended CF | Global warming potential 100 years' but on the other hand it's mentioned that 'In terms of the biodiversity impacts of climate change, we take into account carbon dioxide, methane, fossil methane and nitrous oxide'. How do you connect these two?
 
@@ -25,7 +32,7 @@ Q: Is it correct to use 'all effects 100yrs'
 A: (please confirm) Yes. Citation from the paper: 'We chose impact factors that take all effects into
 account for a period of 100 years for both terrestrial and aquatic ecosystems'.
 
-#### Land stress
+### Land stress
 
 Q: Should land use take into account both occupation and transformation? Right now the factors are calculated with only occupation CFs. If transformation should be taken into account, should it use median values from transf. avg country 100y (CFs_land_Use_average.xlsx)?
 A: 
@@ -33,23 +40,23 @@ A:
 Q: Is the connecting stressor in LC-impact for other land use correct? According to the paper it's 'Average of remaining land use types in LC-Impact (Urban)' but in LC-impact land stress data there is only one remaining land use type which is urban. What is the average paper is referring to?
 A: 
 
-#### Freshwater eutrophication
+### Freshwater eutrophication
 
 Q: Is it ok to compose the used CF as mean of 'CF for P emissions to water' and 'CF for P emissions to soil' like this:
 lci_freshwater_eutrophication["Average"] = lci_freshwater_eutrophication[["CF for P emissions to water [PDFyr/kg]", "CF for P emissions to soil [PDFyr/kg]"]].mean(axis=1)
 A:
 
-#### Marine eutrophication
+### Marine eutrophication
 
 Q: Currently only 'CF for direct N emission to marine system [PDF*yr/kg]' is used. Is this correct, or should CFs for emissions to soil and freswater be somehow included?
 A:
 
-#### Water stress
+### Water stress
 
 Q: Should we use 'all effects' or 'certain effects'?
 A: 
 
-#### General
+### General
 
 Q: Are all grouping patterns in arguments.json ok?
 A: 
@@ -57,6 +64,6 @@ A:
 Q: Are rest of the world countries correctly grouped to different regions in arguments.json?
 A:
 
-### Proposals for maximal reproducibility
+## Proposals for maximal reproducibility
 1. Add more details of connecting lc-impact stressors (Table S5). For example, for 'Land stress: Annual crops' specify file name (CFs_land_Use_average.xlsx), sheet (occupation average country) and column name (Aggregated [PDF-eq/m2] - Core and extended value (no difference) / Annual crops / Median)
 2. If multiple exiobase categories needs to be aggregated, add used regular expressions similar to what was found for water in the code snippet in supporting information: 'Water Consumption Blue.*'
