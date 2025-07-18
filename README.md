@@ -45,27 +45,6 @@ The impact factors for top-level categories can be calculated by summing up its 
 
 In general, most of the inclarity regarding the methodology is related to what are the 'connecting stressor in LC-impact' (table S5) exactly. LC-impact provides more than one option for the CFs. Also some details like which countries are considered as part of which rest of the world region is unclear.
 
-### Climate
-
-Q: What is the correct exiobase stressor for climate? Table S5 mentions 'Climate change midpoint | ILCD recommended CF | Global warming potential 100 years' but on the other hand it's mentioned that 'In terms of the biodiversity impacts of climate change, we take into account carbon dioxide, methane, fossil methane and nitrous oxide'. How do you connect these two?
-
-The calculation code (see pipeline/calculate_all.py row 754) makes an attempt to group the above mentioned substances into the four groups, multiplying those amounts by the respective PDF*y/kg factors and then summing up the factors for different substances to get the total factors for both aquatic and terrestrial effects. If grouping pattern should be used, is it correct? Check exiobase_grouping_patterns.climate_change in arguments.json.
-
-This sentence in the paper hints that grouping to different substances should be done: 'With the spatial component missing from the climate change biodiversity impact analyses, we then multiplied the biodiversity impact factor of each gas with its respective counterpart factor in EXIOBASE'. However, it's unclear how the grouping should be done exactly and why Table S5 does not mention this.
-A:
-
-Q: Is it correct to use 'all effects 100yrs'
-A: (please confirm) Yes. Citation from the paper: 'We chose impact factors that take all effects into
-account for a period of 100 years for both terrestrial and aquatic ecosystems'.
-
-### Land stress
-
-Q: Should land use take into account both occupation and transformation? Right now the factors are calculated with only occupation CFs. If transformation should be taken into account, should it use median values from transf. avg country 100y (CFs_land_Use_average.xlsx)?
-A: 
-
-Q: Is the connecting stressor in LC-impact for other land use correct? According to the paper it's 'Average of remaining land use types in LC-Impact (Urban)' but in LC-impact land stress data there is only one remaining land use type which is urban. What is the average paper is referring to?
-A: 
-
 ### Freshwater eutrophication
 
 Q: CF from erosion is not used, is this ok? Only CF from P emissions to water and soil are used.
@@ -80,6 +59,27 @@ A:
 
 Q: Should we use 'all effects' or 'certain effects'?
 A: 
+
+### Land stress
+
+Q: Should land use take into account both occupation and transformation? Right now the factors are calculated with only occupation CFs. If transformation should be taken into account, should it use median values from transf. avg country 100y (CFs_land_Use_average.xlsx)?
+A: 
+
+Q: Is the connecting stressor in LC-impact for other land use correct? According to the paper it's 'Average of remaining land use types in LC-Impact (Urban)' but in LC-impact land stress data there is only one remaining land use type which is urban. What is the average paper is referring to?
+A: 
+
+### Climate
+
+Q: What is the correct exiobase stressor for climate? Table S5 mentions 'Climate change midpoint | ILCD recommended CF | Global warming potential 100 years' but on the other hand it's mentioned that 'In terms of the biodiversity impacts of climate change, we take into account carbon dioxide, methane, fossil methane and nitrous oxide'. How do you connect these two?
+
+The calculation code (see pipeline/calculate_all.py row 754) makes an attempt to group the above mentioned substances into the four groups, multiplying those amounts by the respective PDF*y/kg factors and then summing up the factors for different substances to get the total factors for both aquatic and terrestrial effects. If grouping pattern should be used, is it correct? Check exiobase_grouping_patterns.climate_change in arguments.json.
+
+This sentence in the paper hints that grouping to different substances should be done: 'With the spatial component missing from the climate change biodiversity impact analyses, we then multiplied the biodiversity impact factor of each gas with its respective counterpart factor in EXIOBASE'. However, it's unclear how the grouping should be done exactly and why Table S5 does not mention this.
+A:
+
+Q: Is it correct to use 'all effects 100yrs'
+A: (please confirm) Yes. Citation from the paper: 'We chose impact factors that take all effects into
+account for a period of 100 years for both terrestrial and aquatic ecosystems'.
 
 ### General
 
