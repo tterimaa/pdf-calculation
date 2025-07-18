@@ -40,7 +40,6 @@ The impact factors for top-level categories can be calculated by summing up its 
 ## Notes about regional harmonization
 - Data in lc-impact is not consistent with regions. Some regions that can be found from exiobase are not found in lc-impact, but these missing regions are not consistent across the whole database. For example, water stress impact factors are missing for Malta, and land use factors are missing Taiwan. For missing factors, continental averages were used.
 - Mapping the rest of the world regions in exiobase to lc-impact regions that are not present as direct regions in exiobase is one of the key parameters of these calculations. These mappings are not carefully thought out and should be re-evaluated. For example, some sub-regions of countires might have been left out.
-- lc-impact data does not always make sense: e.g. the island of Saint Martin appears twice with different impact factors in land stress data as 'Sint Maartin' and 'Saint Martin'.
 
 ## Q&A
 
@@ -93,3 +92,4 @@ A:
 ## Proposals for maximal reproducibility
 1. Add more details of connecting lc-impact stressors (Table S5). For example, for 'Land stress: Annual crops' specify file name (CFs_land_Use_average.xlsx), sheet (occupation average country) and column name (Aggregated [PDF-eq/m2] - Core and extended value (no difference) / Annual crops / Median)
 2. If multiple exiobase categories needs to be aggregated, add used regular expressions similar to what was found for water in the code snippet in supporting information: 'Water Consumption Blue.*'
+3. Best option that would remove the need for adding details to the text would be to publish code that can be used to reproduce the results. End-to-end pipeline similar to pipeline/calculate-all.py would contain all necessary details of the calculation.
