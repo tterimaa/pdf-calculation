@@ -42,8 +42,7 @@ A:
 
 ### Freshwater eutrophication
 
-Q: Is it ok to compose the used CF as mean of 'CF for P emissions to water' and 'CF for P emissions to soil' like this:
-lci_freshwater_eutrophication["Average"] = lci_freshwater_eutrophication[["CF for P emissions to water [PDFyr/kg]", "CF for P emissions to soil [PDFyr/kg]"]].mean(axis=1)
+Q: CF from erosion is not used, is this ok? Only CF from P emissions to water and soil are used.
 A:
 
 ### Marine eutrophication
