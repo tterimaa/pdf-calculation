@@ -10,6 +10,33 @@ notebooks directory contains jupyter notebooks to demonstrate the calculation pr
 
 The root directory contains arguments.json file which is used as a parameter for both the automated pipeline and the notebooks. This file contains most of the essential parameters for the calculation.
 
+## Calculation details
+
+Calculation is performed as granularly as possible, meaning if CF from lc-impact can be connected to exiobase categories it's calculated separately even though it would be part of a group such as 'land use'. Exiobase categories and lc-impact stressors used in calculations can be found in the beginning of every notebook. Impact factors can be divided into following categories:
+
+1. Land stress (pdf-land.ipynb)
+- Forestry
+- Annual crops
+- Annual / permanent crops
+- Pasture
+- Other land use
+2. Climate (pdf-climate.ipynb)
+- Climate change (terrestrial ecosystems)
+- Climate change (aquatic ecosystems)
+3. Direct exploitation of natural resources (pdf-water.ipynb)
+- Water stress
+4. Pollution (pdf-eutrophication-freshwater.ipynb, pdf-eutrophication-marine.ipynb, pdf-pollution-acid.ipynb, pdf-pollution-ozone.ipynb)
+- Freshwater eutrophication from P emissions to water
+- Freshwater eutrophication from P emissions to soil
+- Marine eutrophication from N emissions to marine systems
+- Terrestrial acidification (NOx)
+- Terrestrial acidification (SOx)
+- Terrestrial acidification (NH3)
+- Photochemical ozone formation (NMVOC)
+- Photochemical ozone formation (NOx)
+
+The impact factors for top-level categories can be calculated by summing up its components.
+
 ## Notes about regional harmonization
 - Data in lc-impact is not consistent with regions. Some regions that can be found from exiobase are not found in lc-impact, but these missing regions are not consistent across the whole database. For example, water stress impact factors are missing for Malta, and land use factors are missing Taiwan. For missing factors, continental averages were used.
 - Mapping the rest of the world regions in exiobase to lc-impact regions that are not present as direct regions in exiobase is one of the key parameters of these calculations. These mappings are not carefully thought out and should be re-evaluated. For example, some sub-regions of countires might have been left out.
