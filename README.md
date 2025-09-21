@@ -43,16 +43,16 @@ The impact factors for top-level categories can be calculated by summing up its 
 
 ## Q&A
 
-In general, most of the inclarity regarding the methodology is related to what are the 'connecting stressor in LC-impact' (table S5) exactly. LC-impact provides more than one option for the CFs. Also some details like which countries are considered as part of which rest of the world region is unclear.
+In general, most of the inclarity regarding the methodology is related to what are the 'connecting stressor in LC-impact' (table S5) exactly. LC-impact provides more than one option for the CFs.
 
 ### Freshwater eutrophication
 
-Q: CF from erosion is not used, is this ok? Only CF from P emissions to water and soil are used.
+Q: It's clear that "P - agriculture - water" connects to "CF for P emissions to water" and "P - agriculture - soil" connects to "CF for P emissions to soil" but there's also CF for erosion. Is it correct that this is not used because of lack of connecting information in exiobase? 
 A:
 
 ### Marine eutrophication
 
-Q: Currently only 'CF for direct N emission to marine system [PDF*yr/kg]' is used. Is this correct, or should CFs for emissions to soil and freswater be somehow included?
+Q: Only obvious connection I could find from lc-impact was 'CF for direct N emission to marine system' is used. Is this enough for calulating marine eutrophication?
 A:
 
 ### Water stress
@@ -66,7 +66,7 @@ Q: Should land use take into account both occupation and transformation? Right n
 A: 
 
 Q: Is the connecting stressor in LC-impact for other land use correct? According to the paper it's 'Average of remaining land use types in LC-Impact (Urban)' but in LC-impact land stress data there is only one remaining land use type which is urban. What is the average paper is referring to?
-A: 
+A:
 
 ### Climate
 

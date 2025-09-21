@@ -88,6 +88,14 @@ def load_lci(lci_path):
     lci_land.dropna(subset=["Country_Code"], inplace=True)
     lci_water.dropna(subset=["Country_Code"], inplace=True)
     
+    # Add Augmented column to all LCI datasets (marking original data)
+    lci_ozone['Augmented'] = 'original'
+    lci_acidification['Augmented'] = 'original'
+    lci_freshwater_eutrophication['Augmented'] = 'original'
+    lci_marine_eutrophication['Augmented'] = 'original'
+    lci_land['Augmented'] = 'original'
+    lci_water['Augmented'] = 'original'
+    
     return lci_climate, lci_ozone, lci_acidification, lci_freshwater_eutrophication, lci_marine_eutrophication, lci_land, lci_water
 
 
@@ -323,7 +331,7 @@ def pdf(lci, dr_f, stressor_name):
     return pdf_total
 
 
-def ozone_formation(lci_ozone, exio3_19, exio3_11, row_region_mappings, store_matrix=False):
+def ozone_formation(lci_ozone, exio3_19, exio3_11, row_region_mappings, store_matrix=False, store_cfs=False):
     print("Calculating PDF/€ ozone formation")
     
     # Get EXIOBASE regions
@@ -356,6 +364,18 @@ def ozone_formation(lci_ozone, exio3_19, exio3_11, row_region_mappings, store_ma
         with open("pipeline/output/matrices/pdf-matrix-ozone-nox.pkl", "wb") as f:
             pickle.dump(dr_f_nox, f)
 
+    # Save CFs if enabled
+    if store_cfs:
+        # Store NMVOC CFs
+        cf_nmvoc = lci_ozone[["Country_Code", "NMVOC", "Augmented"]].copy()
+        cf_nmvoc.columns = ["Country_Code", "CF_Value", "Augmented"]
+        cf_nmvoc.to_csv("pipeline/output/cfs/cfs-ozone-nmvoc.csv", index=False)
+        
+        # Store NOx CFs
+        cf_nox = lci_ozone[["Country_Code", "NOx", "Augmented"]].copy()
+        cf_nox.columns = ["Country_Code", "CF_Value", "Augmented"]
+        cf_nox.to_csv("pipeline/output/cfs/cfs-ozone-nox.csv", index=False)
+
     ozone_nmvoc = pdf(lci_ozone, dr_f_nmvoc, "NMVOC")
     ozone_nox = pdf(lci_ozone, dr_f_nox, "NOx")
 
@@ -383,12 +403,17 @@ def augment_acid(lci_acidification):
     cf_nh3_europe = 1.209421972687E-14
     cf_sox_europe = 2.40053603985098E-14
 
+    # Add Augmented column if it doesn't exist
+    if 'Augmented' not in lci_acidification.columns:
+        lci_acidification['Augmented'] = 'original'
+
     row_taiwan = pd.DataFrame({
         "Country": ["Taiwan"],
         "CF Nox": [cf_nox_asia],
         "CF NH3": [cf_nh3_asia],
         "CF Sox": [cf_sox_asia],
         "Country_Code": ["TW"],
+        "Augmented": ["continental average (asia)"],
     })
     row_malta = pd.DataFrame({
         "Country": ["Malta"],
@@ -396,13 +421,14 @@ def augment_acid(lci_acidification):
         "CF NH3": [cf_nh3_europe],
         "CF Sox": [cf_sox_europe],
         "Country_Code": ["MT"],
+        "Augmented": ["continental average (europe)"],
     })
     lci_acidification = pd.concat([lci_acidification, row_malta], ignore_index=True)
     lci_acidification = pd.concat([lci_acidification, row_taiwan], ignore_index=True)
     return lci_acidification
 
 
-def acidification(lci_acidification, exio3_19, exio3_11, row_region_mappings, store_matrix=False):
+def acidification(lci_acidification, exio3_19, exio3_11, row_region_mappings, store_matrix=False, store_cfs=False):
     print("Calculating PDF/€ acidification")
     
     # Get EXIOBASE regions
@@ -452,6 +478,23 @@ def acidification(lci_acidification, exio3_19, exio3_11, row_region_mappings, st
         with open("pipeline/output/matrices/pdf-matrix-acidification-sox.pkl", "wb") as f:
             pickle.dump(dr_f_sox, f)
 
+    # Save CFs if enabled
+    if store_cfs:
+        # Store NOx CFs
+        cf_nox = lci_acidification[["Country_Code", "CF Nox", "Augmented"]].copy()
+        cf_nox.columns = ["Country_Code", "CF_Value", "Augmented"]
+        cf_nox.to_csv("pipeline/output/cfs/cfs-acidification-nox.csv", index=False)
+        
+        # Store NH3 CFs
+        cf_nh3 = lci_acidification[["Country_Code", "CF NH3", "Augmented"]].copy()
+        cf_nh3.columns = ["Country_Code", "CF_Value", "Augmented"]
+        cf_nh3.to_csv("pipeline/output/cfs/cfs-acidification-nh3.csv", index=False)
+        
+        # Store SOx CFs
+        cf_sox = lci_acidification[["Country_Code", "CF Sox", "Augmented"]].copy()
+        cf_sox.columns = ["Country_Code", "CF_Value", "Augmented"]
+        cf_sox.to_csv("pipeline/output/cfs/cfs-acidification-sox.csv", index=False)
+
     acidification_nox = pdf(lci_acidification, dr_f_nox, "CF Nox")
     acidification_nh3 = pdf(lci_acidification, dr_f_nh3, "CF NH3")
     acidification_sox = pdf(lci_acidification, dr_f_sox, "CF Sox")
@@ -468,6 +511,11 @@ def augment_land(lci_land):
     cf_forestry_asia = (cf_forestry_extensive_asia + cf_forestry_intensive_asia) / 2
     cf_urban_asia = 1.64333114974599E-15
     cf_average_asia = (cf_annual_asia + cf_permanent_asia) / 2
+    
+    # Add Augmented column if it doesn't exist
+    if 'Augmented' not in lci_land.columns:
+        lci_land['Augmented'] = 'original'
+    
     row = pd.DataFrame({
         "Country": ["Taiwan"],
         "Average": [cf_average_asia],
@@ -477,12 +525,13 @@ def augment_land(lci_land):
         "Forestry Median": [cf_forestry_asia],
         "Urban Median": [cf_urban_asia],
         "Country_Code": ["TW"],
+        "Augmented": ["continental average (asia)"],
     })
     lci_land = pd.concat([lci_land, row], ignore_index=True)
     return lci_land
 
 
-def land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix=False):
+def land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix=False, store_cfs=False):
     print("Calculating PDF/€ land use (annual and permanent crops)")
 
     # Get EXIOBASE regions
@@ -541,13 +590,20 @@ def land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings, exi
         import pickle
         with open("pipeline/output/matrices/pdf-matrix-land-annual-permanent-crops.pkl", "wb") as f:
             pickle.dump(dr_f_annual, f)
+
+    # Save CFs if enabled
+    if store_cfs:
+        # Store permanent crops CFs
+        cf_permanent = lci_land[["Country_Code", "Permanent crops Median", "Augmented"]].copy()
+        cf_permanent.columns = ["Country_Code", "CF_Value", "Augmented"]
+        cf_permanent.to_csv("pipeline/output/cfs/cfs-land-permanent.csv", index=False)
     
     land_annual_permanent_crops = pdf(lci_land, dr_f_annual, "Permanent crops Median")
 
     return land_annual_permanent_crops
 
 
-def land_annual(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix=False):
+def land_annual(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix=False, store_cfs=False):
     print("Calculating PDF/€ land use (annual crops)")
 
     # Get EXIOBASE regions
@@ -606,13 +662,20 @@ def land_annual(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grou
         import pickle
         with open("pipeline/output/matrices/pdf-matrix-land-annual-crops.pkl", "wb") as f:
             pickle.dump(dr_f_annual, f)
+
+    # Save CFs if enabled
+    if store_cfs:
+        # Store annual crops CFs
+        cf_annual = lci_land[["Country_Code", "Annual crops Median", "Augmented"]].copy()
+        cf_annual.columns = ["Country_Code", "CF_Value", "Augmented"]
+        cf_annual.to_csv("pipeline/output/cfs/cfs-land-annual.csv", index=False)
     
     land_annual_crops = pdf(lci_land, dr_f_annual, "Annual crops Median")
 
     return land_annual_crops
 
 
-def land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix=False):
+def land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix=False, store_cfs=False):
     print("Calculating PDF/€ land use (pasture)")
 
     # Get EXIOBASE regions
@@ -671,13 +734,20 @@ def land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_gro
         import pickle
         with open("pipeline/output/matrices/pdf-matrix-land-pasture.pkl", "wb") as f:
             pickle.dump(dr_f_pasture, f)
+
+    # Save CFs if enabled
+    if store_cfs:
+        # Store pasture CFs
+        cf_pasture = lci_land[["Country_Code", "Pasture Median", "Augmented"]].copy()
+        cf_pasture.columns = ["Country_Code", "CF_Value", "Augmented"]
+        cf_pasture.to_csv("pipeline/output/cfs/cfs-land-pasture.csv", index=False)
     
     land_pasture = pdf(lci_land, dr_f_pasture, "Pasture Median")
 
     return land_pasture
 
 
-def land_forestry(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix=False):
+def land_forestry(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix=False, store_cfs=False):
     print("Calculating PDF/€ land use (forestry)")
 
     # Get EXIOBASE regions
@@ -708,13 +778,20 @@ def land_forestry(lci_land, exio3_11, exio3_19, row_region_mappings, store_matri
         import pickle
         with open("pipeline/output/matrices/pdf-matrix-land-forestry.pkl", "wb") as f:
             pickle.dump(dr_f_forestry, f)
+
+    # Save CFs if enabled
+    if store_cfs:
+        # Store forestry CFs
+        cf_forestry = lci_land[["Country_Code", "Forestry Median", "Augmented"]].copy()
+        cf_forestry.columns = ["Country_Code", "CF_Value", "Augmented"]
+        cf_forestry.to_csv("pipeline/output/cfs/cfs-land-forestry.csv", index=False)
     
     land_forestry = pdf(lci_land, dr_f_forestry, "Forestry Median")
 
     return land_forestry
 
 
-def land_other(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix=False):
+def land_other(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix=False, store_cfs=False):
     print("Calculating PDF/€ land use (other/urban)")
 
     # Get EXIOBASE regions
@@ -745,13 +822,20 @@ def land_other(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix=F
         import pickle
         with open("pipeline/output/matrices/pdf-matrix-land-other.pkl", "wb") as f:
             pickle.dump(dr_f_other, f)
+
+    # Save CFs if enabled
+    if store_cfs:
+        # Store urban/other land use CFs
+        cf_urban = lci_land[["Country_Code", "Urban Median", "Augmented"]].copy()
+        cf_urban.columns = ["Country_Code", "CF_Value", "Augmented"]
+        cf_urban.to_csv("pipeline/output/cfs/cfs-land-urban.csv", index=False)
     
     land_other = pdf(lci_land, dr_f_other, "Urban Median")
 
     return land_other
 
 
-def climate_change(lci_climate, exio3_19, exiobase_grouping_patterns):
+def climate_change(lci_climate, exio3_19, exiobase_grouping_patterns, store_cfs=False):
     print("Calculating PDF/€ climate change")
 
     # TODO: this grouping should be checked
@@ -779,6 +863,31 @@ def climate_change(lci_climate, exio3_19, exiobase_grouping_patterns):
                satellite_agg.M.loc['CH4 fossil'] * lci_climate['All effects 100yrs (terrestrial)'].values[2] + \
                satellite_agg.M.loc['NOx - Total'] * lci_climate['All effects 100yrs (terrestrial)'].values[3]
     
+    # Save CFs if enabled
+    if store_cfs:
+        import pandas as pd
+        # Climate CFs are substance-specific, not country-specific
+        # Create 8 files: 4 aquatic + 4 terrestrial
+        substances = ['CO2', 'CH4', 'CH4-fossil', 'NOx']
+        
+        # Aquatic CFs
+        for i, substance in enumerate(substances):
+            cf_data = pd.DataFrame({
+                'Substance': [substance],
+                'CF_Value': [lci_climate['All effects 100yrs (aquatic)'].values[i]],
+                'Augmented': ['original']
+            })
+            cf_data.to_csv(f"pipeline/output/cfs/cfs-climate-aquatic-{substance.lower()}.csv", index=False)
+        
+        # Terrestrial CFs
+        for i, substance in enumerate(substances):
+            cf_data = pd.DataFrame({
+                'Substance': [substance],
+                'CF_Value': [lci_climate['All effects 100yrs (terrestrial)'].values[i]],
+                'Augmented': ['original']
+            })
+            cf_data.to_csv(f"pipeline/output/cfs/cfs-climate-terrestrial-{substance.lower()}.csv", index=False)
+    
     return climate_aquatic, climate_terrestrial
 
 
@@ -787,12 +896,18 @@ def augment_freshwater(lci_freshwater):
     p_w_eu = 2.19740701963604E-13
     p_s_eu = 2.27816881528299E-14
     p_avg_eu = (p_w_eu + p_s_eu) / 2
+    
+    # Add Augmented column if it doesn't exist
+    if 'Augmented' not in lci_freshwater.columns:
+        lci_freshwater['Augmented'] = 'original'
+    
     malta_row = pd.DataFrame({
         "Country": ["Malta"],
         "CF for P emissions to water [PDFyr/kg]": [p_w_eu],
         "CF for P emissions to soil [PDFyr/kg]": [p_s_eu],
         "Average": [p_avg_eu],
         "Country_Code": ["MT"],
+        "Augmented": ["continental average (europe)"],
     })
     lci_freshwater = pd.concat([lci_freshwater, malta_row], ignore_index=True)
     # cyprus is missing from lc-impact, add cyprus as new row with country code CY and EU averages
@@ -802,6 +917,7 @@ def augment_freshwater(lci_freshwater):
         "CF for P emissions to soil [PDFyr/kg]": [p_s_eu],
         "Average": [p_avg_eu],
         "Country_Code": ["CY"],
+        "Augmented": ["continental average (europe)"],
     })
     lci_freshwater = pd.concat([lci_freshwater, cyprus_row], ignore_index=True)
     return lci_freshwater
@@ -809,15 +925,22 @@ def augment_freshwater(lci_freshwater):
 
 def augment_marine(lci_marine):
     n_w_eu = 3.86913531769129E-15
+    
+    # Add Augmented column if it doesn't exist
+    if 'Augmented' not in lci_marine.columns:
+        lci_marine['Augmented'] = 'original'
+    
     luxembourg_row = pd.DataFrame({
         "Country": ["Luxembourg"],
         "Country_Code": ["LU"],
         "CF for direct N emission to marine system [PDF*yr/kg]": [n_w_eu],
+        "Augmented": ["continental average (europe)"],
     })
     switzerland_row = pd.DataFrame({
         "Country": ["Switzerland"],
         "Country_Code": ["CH"],
         "CF for direct N emission to marine system [PDF*yr/kg]": [n_w_eu],
+        "Augmented": ["continental average (europe)"],
     })
     lci_marine = pd.concat([lci_marine, luxembourg_row, switzerland_row], ignore_index=True)
     return lci_marine
@@ -826,16 +949,22 @@ def augment_marine(lci_marine):
 def augment_water(lci_water):
     # malta is missing from lc-impact, add malta as new row with country code MT and EU averages
     cf_all_eu = 9.02E-15
+    
+    # Add Augmented column if it doesn't exist
+    if 'Augmented' not in lci_water.columns:
+        lci_water['Augmented'] = 'original'
+    
     row = pd.DataFrame({
         "Country": ["Malta"],
         "CF all effects  [PDF·yr/m3]": [cf_all_eu],
         "Country_Code": ["MT"],
+        "Augmented": ["continental average (europe)"],
     })
     lci_water = pd.concat([lci_water, row], ignore_index=True)
     return lci_water
 
 
-def water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings, exiobase_grouping_patterns, store_matrix=False):
+def water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings, exiobase_grouping_patterns, store_matrix=False, store_cfs=False):
     print("Calculating PDF/€ water consumption")
     
     # Get EXIOBASE regions
@@ -895,13 +1024,20 @@ def water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings, exioba
         import pickle
         with open("pipeline/output/matrices/pdf-matrix-water-consumption.pkl", "wb") as f:
             pickle.dump(dr_f_water, f)
+
+    # Save CFs if enabled
+    if store_cfs:
+        # Store water consumption CFs
+        cf_water = lci_water[["Country_Code", "CF all effects  [PDF·yr/m3]", "Augmented"]].copy()
+        cf_water.columns = ["Country_Code", "CF_Value", "Augmented"]
+        cf_water.to_csv("pipeline/output/cfs/cfs-water-consumption.csv", index=False)
     
     water_total = pdf(lci_water, dr_f_water, "CF all effects  [PDF·yr/m3]")
 
     return water_total
 
 
-def marine_eutrophication(lci_marine, exio3_19, exio3_11, row_region_mappings, store_matrix=False):
+def marine_eutrophication(lci_marine, exio3_19, exio3_11, row_region_mappings, store_matrix=False, store_cfs=False):
     print("Calculating PDF/€ marine eutrophication")
     
     # Get EXIOBASE regions
@@ -934,13 +1070,20 @@ def marine_eutrophication(lci_marine, exio3_19, exio3_11, row_region_mappings, s
         import pickle
         with open("pipeline/output/matrices/pdf-matrix-marine-eutrophication.pkl", "wb") as f:
             pickle.dump(dr_f_n, f)
+
+    # Save CFs if enabled
+    if store_cfs:
+        # Store N marine emission CFs
+        cf_n_marine = lci_marine[["Country_Code", "CF for direct N emission to marine system [PDF*yr/kg]", "Augmented"]].copy()
+        cf_n_marine.columns = ["Country_Code", "CF_Value", "Augmented"]
+        cf_n_marine.to_csv("pipeline/output/cfs/cfs-marine-nitrogen.csv", index=False)
     
     marine_n = pdf(lci_marine, dr_f_n, "CF for direct N emission to marine system [PDF*yr/kg]")
 
     return marine_n
 
 
-def freshwater_eutrophication(lci_freshwater, exio3_19, exio3_11, row_region_mappings, store_matrix=False):
+def freshwater_eutrophication(lci_freshwater, exio3_19, exio3_11, row_region_mappings, store_matrix=False, store_cfs=False):
     print("Calculating PDF/€ freshwater eutrophication")
     
     # Get EXIOBASE regions
@@ -983,6 +1126,18 @@ def freshwater_eutrophication(lci_freshwater, exio3_19, exio3_11, row_region_map
             pickle.dump(dr_f_p_water, f)
         with open("pipeline/output/matrices/pdf-matrix-freshwater-eutrophication-soil.pkl", "wb") as f:
             pickle.dump(dr_f_p_soil, f)
+
+    # Save CFs if enabled
+    if store_cfs:
+        # Store P water emission CFs
+        cf_p_water = lci_freshwater[["Country_Code", "CF for P emissions to water [PDFyr/kg]", "Augmented"]].copy()
+        cf_p_water.columns = ["Country_Code", "CF_Value", "Augmented"]
+        cf_p_water.to_csv("pipeline/output/cfs/cfs-freshwater-water.csv", index=False)
+        
+        # Store P soil emission CFs
+        cf_p_soil = lci_freshwater[["Country_Code", "CF for P emissions to soil [PDFyr/kg]", "Augmented"]].copy()
+        cf_p_soil.columns = ["Country_Code", "CF_Value", "Augmented"]
+        cf_p_soil.to_csv("pipeline/output/cfs/cfs-freshwater-soil.csv", index=False)
     
     freshwater_p_water = pdf(lci_freshwater, dr_f_p_water, "CF for P emissions to water [PDFyr/kg]")
     freshwater_p_soil = pdf(lci_freshwater, dr_f_p_soil, "CF for P emissions to soil [PDFyr/kg]")
@@ -990,7 +1145,7 @@ def freshwater_eutrophication(lci_freshwater, exio3_19, exio3_11, row_region_map
     return freshwater_p_water, freshwater_p_soil
 
 
-def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings, exiobase_grouping_patterns, store_matrix=False):
+def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings, exiobase_grouping_patterns, store_matrix=False, store_cfs=False):
     lci_climate, lci_ozone, lci_acidification, lci_freshwater_eutrophication, lci_marine_eutrophication, lci_land, lci_water = load_lci(lci_path)
 
     # Create matrices directory if store_matrix is True
@@ -999,6 +1154,13 @@ def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings, exi
         matrices_dir = "pipeline/output/matrices"
         os.makedirs(matrices_dir, exist_ok=True)
         print(f"Matrix storage enabled. Matrices will be saved to {matrices_dir}")
+
+    # Create CFs directory if store_cfs is True
+    if store_cfs:
+        import os
+        cfs_dir = "pipeline/output/cfs"
+        os.makedirs(cfs_dir, exist_ok=True)
+        print(f"CFs storage enabled. Characterization factors will be saved to {cfs_dir}")
 
     # exiobase 2019 is used for impact factors
     exio3_19 = pymrio.parse_exiobase3(path=exio_19_path)
@@ -1010,29 +1172,29 @@ def calculate_all(lci_path, exio_19_path, exio_11_path, row_region_mappings, exi
     exio3_11.L = pymrio.calc_L(exio3_11.A)
 
     # Calculate climate change impact
-    climate_aquatic, climate_terrestrial = climate_change(lci_climate, exio3_19, exiobase_grouping_patterns)
+    climate_aquatic, climate_terrestrial = climate_change(lci_climate, exio3_19, exiobase_grouping_patterns, store_cfs)
 
     # Calculate ozone formation impact
-    ozone_nmvoc, ozone_nox = ozone_formation(lci_ozone, exio3_19, exio3_11, row_region_mappings, store_matrix)
+    ozone_nmvoc, ozone_nox = ozone_formation(lci_ozone, exio3_19, exio3_11, row_region_mappings, store_matrix, store_cfs)
     
     # Calculate acidification impact
-    acidification_nox, acidification_nh3, acidification_sox = acidification(lci_acidification, exio3_19, exio3_11, row_region_mappings, store_matrix)
+    acidification_nox, acidification_nh3, acidification_sox = acidification(lci_acidification, exio3_19, exio3_11, row_region_mappings, store_matrix, store_cfs)
     
     # Calculate freshwater eutrophication impact
-    freshwater_p_water, freshwater_p_soil = freshwater_eutrophication(lci_freshwater_eutrophication, exio3_19, exio3_11, row_region_mappings, store_matrix)
+    freshwater_p_water, freshwater_p_soil = freshwater_eutrophication(lci_freshwater_eutrophication, exio3_19, exio3_11, row_region_mappings, store_matrix, store_cfs)
     
     # Calculate marine eutrophication impact
-    marine_n = marine_eutrophication(lci_marine_eutrophication, exio3_19, exio3_11, row_region_mappings, store_matrix)
+    marine_n = marine_eutrophication(lci_marine_eutrophication, exio3_19, exio3_11, row_region_mappings, store_matrix, store_cfs)
     
     # Calculate water consumption impact
-    water_total = water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings, exiobase_grouping_patterns, store_matrix)
+    water_total = water_consumption(lci_water, exio3_19, exio3_11, row_region_mappings, exiobase_grouping_patterns, store_matrix, store_cfs)
     
     # Calculate land use impact
-    land_annual_permanent_impact = land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix)
-    land_annual_impact = land_annual(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix)
-    land_pasture_impact = land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix)
-    land_forestry_impact = land_forestry(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix)
-    land_other_impact = land_other(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix)
+    land_annual_permanent_impact = land_annual_permanent(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix, store_cfs)
+    land_annual_impact = land_annual(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix, store_cfs)
+    land_pasture_impact = land_pasture(lci_land, exio3_11, exio3_19, row_region_mappings, exiobase_grouping_patterns, store_matrix, store_cfs)
+    land_forestry_impact = land_forestry(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix, store_cfs)
+    land_other_impact = land_other(lci_land, exio3_11, exio3_19, row_region_mappings, store_matrix, store_cfs)
 
     # Write the results
     pd.DataFrame(climate_aquatic).to_csv("pipeline/output/pdf-climate-aquatic.csv", index=True)
@@ -1061,11 +1223,16 @@ def main():
                              "These matrices contain the regional distribution of environmental impacts "
                              "per euro spent. Climate impact matrices are not stored as they are not "
                              "regionally distributed.")
+    parser.add_argument("--store-cfs", action="store_true",
+                        help="Store characterization factors as CSV files to output/cfs directory. "
+                             "These files contain the CF values used in calculations with country codes "
+                             "and augmentation source information for transparency.")
     
     # Parse the arguments
     args = parser.parse_args()
     json_file = args.json_file
     store_matrix = args.store_matrix
+    store_cfs = args.store_cfs
 
     try:
         # Open and read the JSON file
@@ -1076,7 +1243,7 @@ def main():
         print("Successfully parsed JSON file:")
         print(json.dumps(data, indent=4))  # Pretty-print JSON
 
-        calculate_all(data['lc_impact_path'], data['exio_19_path'], data['exio_11_path'], data['row_region_mappings'], data['exiobase_grouping_patterns'], store_matrix)
+        calculate_all(data['lc_impact_path'], data['exio_19_path'], data['exio_11_path'], data['row_region_mappings'], data['exiobase_grouping_patterns'], store_matrix, store_cfs)
     except FileNotFoundError:
         print(f"Error: File '{json_file}' not found.")
     except json.JSONDecodeError as e:
