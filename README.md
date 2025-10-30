@@ -10,6 +10,152 @@ notebooks directory contains jupyter notebooks to demonstrate the calculation pr
 
 The root directory contains arguments.json file which is used as a parameter for both the automated pipeline and the notebooks. This file contains most of the essential parameters for the calculation.
 
+## Methodology Overview
+
+This methodology combines EXIOBASE (economic and environmental data) with LC-IMPACT (biodiversity characterization factors) to calculate consumption-based biodiversity impact factors (PDF/€).
+
+### Simplified Example: Land Use from Agriculture
+
+Let's trace how consuming €1 of agricultural products in Finland impacts biodiversity globally. This example uses 2 consumption countries × 2 sectors, but the real calculation uses 49 regions × 200 sectors.
+
+```
+DATA SOURCES:
+┌──────────────────────────────────────────────────────────────┐
+│ EXIOBASE: Supply chains + Environmental stressors            │
+│ • Where products come from                                   │
+│ • How much land is used by each region-sector (m²)           │
+└──────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│ LC-IMPACT: Biodiversity characterization factors             │
+│ • How sensitive is biodiversity in each country (PDF/m²)     │
+└──────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════
+STEP 1: Driver Origin (DRorigin) - Where does land use occur?
+═══════════════════════════════════════════════════════════════
+
+EXIOBASE traces supply chains: When Finland consumes €1 of agriculture,
+land is used in Finland, Brazil (imports), and other countries.
+
+                    Consumption in →
+                    FI-Agr    FI-Mfg    BR-Agr    BR-Mfg
+Impact occurs in ↓  (€1)      (€1)      (€1)      (€1)
+─────────────────────────────────────────────────────────
+FI-Agriculture     800 m²    100 m²     20 m²     50 m²
+FI-Manufacturing    50 m²    600 m²     10 m²    200 m²
+BR-Agriculture     150 m²     50 m²    900 m²    100 m²
+BR-Manufacturing    20 m²    300 m²     80 m²    700 m²
+─────────────────────────────────────────────────────────
+                  1020 m²   1050 m²   1010 m²   1050 m²  (column sums)
+
+Example: €1 of Finnish agriculture uses 800 m² in Finland + 150 m²
+in Brazil (imported inputs) + 50+20 m² in manufacturing sectors.
+
+═══════════════════════════════════════════════════════════════
+STEP 2: Driver Share (DRshare) - Normalize to shares
+═══════════════════════════════════════════════════════════════
+
+Divide each column by its sum to get shares (each column sums to 1.0):
+
+                    Consumption in →
+                    FI-Agr    FI-Mfg    BR-Agr    BR-Mfg
+Impact occurs in ↓
+─────────────────────────────────────────────────────────
+FI-Agriculture      0.78      0.10      0.02      0.05
+FI-Manufacturing    0.05      0.57      0.01      0.19
+BR-Agriculture      0.15      0.05      0.89      0.10
+BR-Manufacturing    0.02      0.29      0.08      0.67
+─────────────────────────────────────────────────────────
+                    1.00      1.00      1.00      1.00
+
+Example: When Finland consumes €1 of agriculture, 78% of land
+impacts occur in Finland, 15% in Brazil, etc.
+
+═══════════════════════════════════════════════════════════════
+STEP 3: Region Harmonization (DRunit) - Expand ROW regions
+═══════════════════════════════════════════════════════════════
+
+EXIOBASE has "Rest of World" aggregated regions (WA, WE, WF, WL, WM).
+These are expanded to individual countries for LC-IMPACT matching.
+
+Example: "WL" (Rest of Latin America) gets split into Argentina,
+Chile, Colombia, etc. Each country gets an equal share.
+
+Before: WL-Agriculture = 0.20
+After:  AR-Agriculture = 0.20/30 = 0.0067
+        CL-Agriculture = 0.20/30 = 0.0067
+        CO-Agriculture = 0.20/30 = 0.0067
+        ... (30 countries)
+
+This expands the matrix from ~9,800 rows to ~48,000 rows.
+
+═══════════════════════════════════════════════════════════════
+STEP 4: Monetary Factors (DRfactor) - Convert to stressor/€
+═══════════════════════════════════════════════════════════════
+
+Apply EXIOBASE stressor intensity (m²/€) to get actual land use per €:
+
+Stressor intensity:    FI-Agr: 1020 m²/€
+                       FI-Mfg: 1050 m²/€
+                       BR-Agr: 1010 m²/€
+                       BR-Mfg: 1050 m²/€
+
+Multiply each column by its intensity:
+
+                    Consumption in →
+                    FI-Agr    FI-Mfg    BR-Agr    BR-Mfg
+Impact occurs in ↓  (m²/€)    (m²/€)    (m²/€)    (m²/€)
+─────────────────────────────────────────────────────────
+FI-Agriculture      796       105        20        53
+FI-Manufacturing     51       598        10       200
+BR-Agriculture      153        53       899       105
+BR-Manufacturing     20       304        81       704
+─────────────────────────────────────────────────────────
+
+Example: €1 of FI-Agriculture → 796 m² in Finland, 153 m² in Brazil
+
+═══════════════════════════════════════════════════════════════
+STEP 5: Biodiversity Impact (PDF/€) - Apply LC-IMPACT factors
+═══════════════════════════════════════════════════════════════
+
+LC-IMPACT provides characterization factors (PDF/m²) for each country:
+
+                    CF (PDF/m²)
+─────────────────────────────────
+FI-Agriculture      5.0 × 10⁻¹⁶
+FI-Manufacturing    3.0 × 10⁻¹⁶
+BR-Agriculture      8.0 × 10⁻¹⁶
+BR-Manufacturing    4.0 × 10⁻¹⁶
+
+Multiply m²/€ by PDF/m² and sum over impact countries:
+
+FI-Agriculture consumption:
+  = (796 m² × 5.0×10⁻¹⁶) + (51 × 3.0×10⁻¹⁶) + (153 × 8.0×10⁻¹⁶) + (20 × 4.0×10⁻¹⁶)
+  = 3.98×10⁻¹³ + 1.53×10⁻¹⁴ + 1.22×10⁻¹³ + 8.0×10⁻¹⁵
+  = 5.48 × 10⁻¹³ PDF/€
+
+FINAL OUTPUT (example):
+─────────────────────────────────
+FI-Agriculture:  5.48 × 10⁻¹³ PDF/€
+FI-Manufacturing: 4.21 × 10⁻¹³ PDF/€
+BR-Agriculture:  6.92 × 10⁻¹³ PDF/€
+BR-Manufacturing: 5.15 × 10⁻¹³ PDF/€
+
+This means: Consuming €1 of Finnish agricultural products causes
+5.48 × 10⁻¹³ PDF of biodiversity impact globally (mostly in Brazil
+where CF is higher).
+```
+
+### Key Concepts
+
+**Consumption-based accounting**: Impacts are attributed to final consumption, not where they physically occur. The Leontief input-output model traces impacts through multi-tier supply chains.
+
+**Real dimensions**:
+- 49 EXIOBASE regions × 200 sectors = 9,800 consumption region-sector pairs
+- 240 LC-IMPACT countries × 200 sectors = 48,000 impact country-sector pairs
+
+**PDF (Potentially Disappeared Fraction)**: Fraction of species potentially lost, integrated over area and time. Units are PDF×m²×year or PDF×year per euro of consumption.
+
 ## Calculation details
 
 Calculation is performed as granularly as possible, meaning if CF from lc-impact can be connected to exiobase categories it's calculated separately even though it would be part of a group such as 'land use'. Exiobase categories and lc-impact stressors used in calculations can be found in the beginning of every notebook. Impact factors can be divided into following categories:
